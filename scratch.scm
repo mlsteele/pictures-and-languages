@@ -38,6 +38,7 @@
 ;;; Turtle Type
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; A mutable logo turtle.
 (define-record-type <logo/turtle>
     (%logo/turtle/new pos angle pendown)
     logo/turtle?
@@ -62,6 +63,7 @@
                (logo/turtle/angle turtle))
             360)))
 
+;;; Note: This does not draw any lines on any canvii
 (define (logo/turtle/forward turtle distance)
   (let* ((pos (logo/turtle/pos turtle))
          (x (car pos))
@@ -84,14 +86,20 @@
 ;;; Canvas Type
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; A Logo canvas holds the graphical state of a logo program.
+;;; This includes where the turtle is, and what has been drawn so far. 
 (define-record-type <logo/canvas>
     (%logo/canvas/new turtle lines)
     logo/canvas?
   (turtle logo/canvas/turtle)
-  (lines  logo/canvas/lines))
+  (lines  logo/canvas/lines logo/canvas/set-lines!))
 
 (define (logo/canvas/new)
   (%logo/canvas/new (logo/turtle/new) '()))
+
+(define (logo/canvas/add-line canvas line)
+  (logo/canvas/set-lines! canvas
+    (cons line (logo/canvas/lines canvas))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -112,8 +120,12 @@
 ;;; Logo Language Recognizers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+#|
 (define logo/repeat?
   (match->combinators `(repeat (? ,logo/numexpr?) (?:+ (? ,logo/stmt?)))))
+|#
+
+(define (logo/repeat? expr) #f)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -130,15 +142,36 @@
     ((forward fd) (logo/builtin-forward env canvas expr))
     (else (error 'call-not-implemented))))
 
+(defhandler logo/eval
+  (lambda (env canvas expr)
+    (let ((count (cadr expr))
+          (stmts (cddr expr)))
+      (let loop ((pending count))
+        (for-each (lambda (stmt)
+                    (logo/eval env canvas stmt))
+                  stmts)
+        (if (> pending 0)
+          (loop (- 1 pending))))))
+  logo/repeat?)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Logo Primitive Evaluators
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; These operations cause events 'happen' by mutating the canvas.
+
 (define (logo/builtin-rotate env canvas expr)
   (let ((turtle (logo/canvas/turtle canvas))
         (angle (cadr expr)))
     (logo/turtle/rotate turtle angle)))
 
 (define (logo/builtin-forward env canvas expr)
-  (let ((turtle (logo/canvas/turtle canvas))
-        (distance (cadr expr)))
-    (logo/turtle/forward turtle distance)))
+  (let* ((distance (cadr expr))
+         (turtle (logo/canvas/turtle canvas))
+         (oldpos (logo/turtle/pos turtle)))
+    (logo/turtle/forward turtle distance)
+    (logo/canvas/add-line canvas
+      (list oldpos (logo/turtle/pos turtle)))))
 
 #| Example
 (define c (logo/canvas/new))
@@ -146,4 +179,5 @@
 (pp (logo/canvas/turtle c))
 (logo/eval '() c '(fd 100))
 (pp (logo/canvas/turtle c))
+(pp c)
 |#
