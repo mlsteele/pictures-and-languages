@@ -8,6 +8,16 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Helpers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define pi (* 4 (atan 1.0)))
+
+(define (degrees->rads degrees)
+  (* 2 PI (/ degrees 360.)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Generic pretty printer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -51,6 +61,16 @@
     (modulo (+ angle
                (logo/turtle/angle turtle))
             360)))
+
+(define (logo/turtle/forward turtle distance)
+  (let* ((pos (logo/turtle/pos turtle))
+         (x (car pos))
+         (y (cadr pos))
+         (angle (logo/turtle/angle turtle))
+         (rads (degrees->rads angle)))
+     (logo/turtle/set-pos! turtle
+       (list (+ x (* distance (cos rads)))
+             (+ y (* distance (sin rads)))))))
 
 #| Example
 (define t (logo/turtle/new))
@@ -106,23 +126,24 @@
 
 (define (logo/eval-default env canvas expr)
   (case (car expr)
-    ((rotate rt) (error 'rotate-not-implemented))
-    ((forward fd) (error 'forward-not-implemented))
+    ((rotate rt) (logo/builtin-rotate env canvas expr))
+    ((forward fd) (logo/builtin-forward env canvas expr))
     (else (error 'call-not-implemented))))
 
-(define (logo/eval-default env canvas expr)
-  (case (car expr)
-    ((rotate rt) (logo/eval-rotate env canvas expr))
-    ((forward fd) (error 'forward-not-implemented))
-    (else (error 'call-not-implemented))))
-
-(define (logo/eval-rotate env canvas expr)
+(define (logo/builtin-rotate env canvas expr)
   (let ((turtle (logo/canvas/turtle canvas))
         (angle (cadr expr)))
     (logo/turtle/rotate turtle angle)))
 
+(define (logo/builtin-forward env canvas expr)
+  (let ((turtle (logo/canvas/turtle canvas))
+        (distance (cadr expr)))
+    (logo/turtle/forward turtle distance)))
+
 #| Example
 (define c (logo/canvas/new))
 (logo/eval '() c '(rotate 10))
+(pp (logo/canvas/turtle c))
+(logo/eval '() c '(fd 100))
 (pp (logo/canvas/turtle c))
 |#
