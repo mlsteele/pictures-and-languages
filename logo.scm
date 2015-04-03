@@ -104,12 +104,28 @@
 ;;; Logo Language Recognizers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(define logo:repeat?
-  (match->combinators `(repeat (? ,logo:numexpr?) (?:+ (? ,logo:stmt?)))))
-|#
+(define (logo:numexpr? expr)
+  (or (number? expr)
+      (symbol? expr)
+      (list? expr)))
 
-(define (logo:repeat? expr) #f)
+(define ((match:->simple pattern) input)
+  ((match:->combinators pattern)
+   (list input)
+   '()
+   (lambda (d n) #t)))
+
+(define logo:repeat?
+  (match:->simple
+    `(repeat (? count ,logo:numexpr?) (?? stmts))))
+
+(define logo:to?
+  (match:->simple
+    `(to ((? name ,symbol?) (?? argnames)) (?? stmts))))
+
+#| Doodle
+(logo:to? `(to (yo yo yo) yo yo yo))
+|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
