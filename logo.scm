@@ -263,3 +263,50 @@
 (pp c)
 (pp (environment-bindings e))
 |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Logo REPL
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Start an interactive logo repl
+;;; Terminate by entering "commit" or "(commit)"
+(define (logo:repl)
+  (let ((canvas (logo:canvas:new))
+        (env (make-root-top-level-environment)))
+    (define (loop)
+      (display "\nlogo> ")
+      (let ((input (read)))
+        (display "\n")
+        (display input)
+        (if (logo:repl-terminator input)
+          canvas
+          (begin
+            (logo:eval input env canvas)
+            (loop)))))
+    (loop)))
+
+(define (logo:repl-terminator input)
+  (or (eqv? input 'commit)
+      (and (list? input)
+           (= 1 (length input))
+           (eqv? 'commit (car input)))))
+
+(logo:repl-terminator '(commit))
+
+#| Usage Example
+(define result-canvas (logo:repl))
+
+;;; Into REPL
+(fd 10)
+(rt 90)
+(fd 10)
+(to (square)
+  (repeat 4
+    (fd 100)
+    (rt 90)))
+(square)
+(commit)
+
+(pp result-canvas)
+|#
