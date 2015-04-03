@@ -15,11 +15,11 @@
 (define c (logo:canvas:new))
 
 ;;; Run a really simple program in the logo interpreter.
-(logo:eval '() c '(rotate 10))
+(logo:eval '(rotate 10) '() c)
 ;;; See that the turtle changed its angle.
 (pp (logo:canvas:turtle c))
 ;;; And another simple program
-(logo:eval '() c '(fd 100))
+(logo:eval '(fd 100) '() c)
 (pp (logo:canvas:turtle c))
 ;;; This one added a line to the canvas!
 (pp c)

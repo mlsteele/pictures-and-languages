@@ -76,7 +76,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; A Logo canvas holds the graphical state of a logo program.
-;;; This includes where the turtle is, and what has been drawn so far. 
+;;; This includes where the turtle is, and what has been drawn so far.
 (define-record-type <logo:canvas>
     (%logo:canvas:new turtle lines)
     logo:canvas?
@@ -104,9 +104,14 @@
 ;;; Logo Language Recognizers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define (logo:name? expr)
+  (symbol? expr))
+
+;;; A numexpr is anything which evaluates to a number.
+;;; It could be a number, name, or numeric scheme expression
 (define (logo:numexpr? expr)
-  (or (number? expr)
-      (symbol? expr)
+  (or (logo:name? expr)
+      (number? expr)
       (list? expr)))
 
 (define ((match:->simple pattern) input)
@@ -123,9 +128,13 @@
   (match:->simple
     `(to ((? name ,symbol?) (?? argnames)) (?? stmts))))
 
-#| Doodle
-(logo:to? `(to (yo yo yo) yo yo yo))
-|#
+(define (logo:call? expr)
+  (and (list? expr)
+       (not (or (null? expr)
+                (logo:to? expr)
+                (logo:repeat? expr)))
+       (every logo:numexpr?
+              (cdr expr))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -136,22 +145,22 @@
   (make-generic-operator 3 'logo:eval
     (lambda args (apply logo:eval-default args))))
 
-(define (logo:eval-default env canvas expr)
+(define (logo:eval-default expr env canvas)
   (case (car expr)
-    ((rotate rt) (logo:builtin-rotate env canvas expr))
-    ((forward fd) (logo:builtin-forward env canvas expr))
-    (else (error 'call-not-implemented))))
+    ((rotate rt) (logo:builtin-rotate expr env canvas))
+    ((forward fd) (logo:builtin-forward expr env canvas))
+    (else (error 'call-not-implemented expr))))
 
+;;; repeat causes its body to be eval'd 'count times.
 (defhandler logo:eval
-  (lambda (env canvas expr)
+  (lambda (expr env canvas)
     (let ((count (cadr expr))
           (stmts (cddr expr)))
-      (let loop ((pending count))
-        (for-each (lambda (stmt)
-                    (logo:eval env canvas stmt))
-                  stmts)
-        (if (> pending 0)
-          (loop (- 1 pending))))))
+      (do-n-times count
+        (lambda _
+          (for-each (lambda (stmt)
+                      (logo:eval stmt env canvas))
+                    stmts)))))
   logo:repeat?)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -160,12 +169,12 @@
 
 ;;; These operations cause events 'happen' by mutating the canvas.
 
-(define (logo:builtin-rotate env canvas expr)
+(define (logo:builtin-rotate expr env canvas)
   (let ((turtle (logo:canvas:turtle canvas))
         (angle (cadr expr)))
     (logo:turtle:rotate turtle angle)))
 
-(define (logo:builtin-forward env canvas expr)
+(define (logo:builtin-forward expr env canvas)
   (let* ((distance (cadr expr))
          (turtle (logo:canvas:turtle canvas))
          (oldpos (logo:turtle:pos turtle)))
@@ -194,9 +203,11 @@
 
 #| Example
 (define c (logo:canvas:new))
-(logo:eval '() c '(rotate 10))
-(pp (logo:canvas:turtle c))
-(logo:eval '() c '(fd 100))
+
+(logo:eval '(rotate 10) '() c)
+(logo:eval '(fd 100) '() c)
+(logo:eval '(repeat 4 (fd 100)) '() c)
+
 (pp (logo:canvas:turtle c))
 (pp c)
 |#
