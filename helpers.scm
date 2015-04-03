@@ -18,6 +18,23 @@
         (proc)
         (loop (- n 1))))))
 
+;;; Lookup a procedure when it is called.
+;;; This defends against pass-by-value binding of procedures.
+;;; This makes development easier, but a little more dangerous.
+(define (((lookup-later-in env) name) . args)
+  (apply (environment-lookup env name)
+         args))
+
+(define lookup-later (lookup-later-in (the-environment)))
+
+#| Test Cases
+(define (foo) 1)
+(define foo-proxy (lookup-later 'foo))
+(foo-proxy) ; 1
+(define (foo) 2)
+(foo-proxy) ; 2
+|#
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Generic pretty printer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27,7 +44,7 @@
                          (environment-lookup system-global-environment 'pp)))
 
 (defhandler pp
-  (lambda _ (display "<null>"))
+  (lambda _ (display "<null>\n"))
   null?)
 
 #| Example

@@ -129,10 +129,11 @@
     `(to ((? name ,symbol?) (?? argnames)) (?? stmts))))
 
 (define (logo:call? expr)
-  (and (list? expr)
-       (not (or (null? expr)
-                (logo:to? expr)
+  (and (not (or (logo:to? expr)
                 (logo:repeat? expr)))
+       (list? expr)
+       (not (null? expr))
+       (logo:name? (car expr))
        (every logo:numexpr?
               (cdr expr))))
 
@@ -141,11 +142,46 @@
 ;;; Logo Language Evaluators
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; Type for evaluated Logo procedures as defined to 'to statements.
+;;; These are stored in env.
+(define-record-type <logo:procedure>
+    (logo:procedure:new name argnames body)
+    logo:procedure?
+  (name     logo:procedure:name)
+  (argnames logo:procedure:argnames)
+  (body     logo:procedure:body))
+
+(define (logo:procedure-exists name env)
+  (and (eq? (environment-reference-type env name) 'normal)
+       (logo:procedure? (environment-lookup env name))))
+
 (define (logo:eval-call expr env canvas)
-  (case (car expr)
-    ((rotate rt) (logo:builtin-rotate expr env canvas))
-    ((forward fd) (logo:builtin-forward expr env canvas))
-    (else (error 'call-not-implemented expr))))
+  (let ((name     (car expr))
+        (argexprs (cdr expr)))
+    (case name
+      ((rotate rt) (logo:builtin-rotate expr env canvas))
+      ((forward fd) (logo:builtin-forward expr env canvas))
+      (else
+        (if (logo:procedure-exists name env)
+          (logo:apply (environment-lookup env name)
+                      (map (lambda (argexpr)
+                             (logo:eval argexpr env canvas))
+                           argexprs)
+                      env canvas)
+          (error 'call-unbound-logo-var name))))))
+
+;;; Apply a logo:procedure called within 'env.
+(define (logo:apply lproc argvals env canvas)
+  (let ((name     (logo:procedure:name lproc))
+        (argnames (logo:procedure:argnames lproc))
+        (body     (logo:procedure:body lproc)))
+    (if (not (= (length argnames) (length argvals)))
+      (error 'arity-mismatch name))
+    (let ((invocation-env (extend-top-level-environment
+                            env argnames argvals)))
+      (for-each (lambda (expr)
+                  (logo:eval expr invocation-env canvas))
+                body))))
 
 ;;; repeat causes its body to be eval'd 'count times.
 (define (logo:eval-repeat expr env canvas)
@@ -157,18 +193,28 @@
                     (logo:eval stmt env canvas))
                   stmts)))))
 
+;;; Put a procedure definition in the environment.
+(define (logo:eval-to expr env canvas)
+  (let ((name     (caadr expr))
+        (argnames (cdadr expr))
+        (stmts    (cddr expr)))
+    (environment-define env name
+      (logo:procedure:new name argnames stmts))))
+
 ;;; Generic evaluator
 (define logo:eval
-  (make-generic-operator 3 'logo:eval logo:eval-call))
+  (make-generic-operator 3 'logo:eval))
 
-(defhandler logo:eval logo:eval-repeat logo:repeat?)
+(defhandler logo:eval (lookup-later 'logo:eval-repeat) logo:repeat?)
+(defhandler logo:eval (lookup-later 'logo:eval-call)   logo:call?)
+(defhandler logo:eval (lookup-later 'logo:eval-to)     logo:to?)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Logo Primitive Evaluators
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; These operations cause events 'happen' by mutating the canvas.
+;;; These operations cause events to 'happen' by mutating the canvas.
 
 (define (logo:builtin-rotate expr env canvas)
   (let ((turtle (logo:canvas:turtle canvas))
@@ -204,11 +250,16 @@
 
 #| Example
 (define c (logo:canvas:new))
+(define e (make-root-top-level-environment))
 
-(logo:eval '(rotate 10) '() c)
-(logo:eval '(fd 100) '() c)
-(logo:eval '(repeat 4 (fd 100)) '() c)
+(logo:eval '(rotate 10) e c)
+(logo:eval '(fd 100) e c)
+(logo:eval '(repeat 4 (fd 100)) e c)
+(logo:eval '(repeat 4 (fd 100)) e c)
+(logo:eval '(to (revline) (rt 180) (fd 100)) e c)
+(logo:eval '(revline) e c)
 
 (pp (logo:canvas:turtle c))
 (pp c)
+(pp (environment-bindings e))
 |#
