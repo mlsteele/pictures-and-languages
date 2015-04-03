@@ -1,4 +1,27 @@
 ;;; Interpreter for Logo-like language.
+;;;
+;;; This is a miniature version of the Logo programming language.
+;;; The basic premise of this language is that there is a turtle,
+;;; a small robot who lives on a cartesian plane, and you tell the
+;;; turtle how to draw spiffy things.
+;;;
+;;; The turtle knows several primitive commands:
+;;; - how to move forwards (forward or fd)
+;;; - how to turn to the right (rotate or rt)
+;;; - how to pick up its pen to stop drawing (penup)
+;;; - how to pick drop its pen to continue drawing (pendown)
+;;;
+;;; The turtle starts at (0 0) with its pen down, ready to draw.
+;;;
+;;; You can teach the turtle tricks by defining procedures.
+;;; Here we tell the turtle how to draw a square of a given size.
+;;;     (to (square size)
+;;;       (repeat 4
+;;;         (fd size)
+;;;         (rt 90))))
+;;;
+;;; And to invoke the square procedure and make the square happen:
+;;;     (square 100)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Turtle Type
@@ -78,20 +101,6 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Example Logo Programs
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define example-tosq
-  '(to (square size)
-     (repeat 4
-       (fd size)
-       (rt 90))))
-
-(define example-callsq
-  '(square 100))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Logo Language Recognizers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -147,6 +156,25 @@
     (logo:turtle:forward turtle distance)
     (logo:canvas:add-line canvas
       (list oldpos (logo:turtle:pos turtle)))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Example Logo Programs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define example-tosq
+  '(to (square size)
+     (repeat 4
+       (fd size)
+       (rt 90))))
+
+(define example-callsq
+  '(square 100))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Example Usage
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #| Example
 (define c (logo:canvas:new))
