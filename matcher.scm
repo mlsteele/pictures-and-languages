@@ -27,19 +27,19 @@
 (define (match:element variable restrictions)
   (define (ok? datum)
     (every (lambda (restriction)
-	     (restriction datum))
-	   restrictions))
+             (restriction datum))
+           restrictions))
   (define (element-match data dictionary succeed)
     (and (pair? data)
-	 (ok? (car data))
-	 (let ((vcell (match:lookup variable dictionary)))
-	   (if vcell
-	       (and (equal? (match:value vcell) (car data))
-		    (succeed dictionary 1))
-	       (succeed (match:bind variable
-				    (car data)
-				    dictionary)
-			1)))))
+         (ok? (car data))
+         (let ((vcell (match:lookup variable dictionary)))
+           (if vcell
+             (and (equal? (match:value vcell) (car data))
+                  (succeed dictionary 1))
+             (succeed (match:bind variable
+                                  (car data)
+                                  dictionary)
+                      1)))))
   element-match)
 
 
@@ -54,30 +54,35 @@
 (define (match:value vcell)
   (cadr vcell))
 
-(define (match:segment variable)
+(define (match:segment variable restrictions)
+  ;;; TODO use ok? here.
+  (define (ok? datum)
+    (every (lambda (restriction)
+             (restriction datum))
+           restrictions))
   (define (segment-match data dictionary succeed)
     (and (list? data)
-	 (let ((vcell (match:lookup variable dictionary)))
-	   (if vcell
-	       (let lp ((data data)
-			(pattern (match:value vcell))
-			(n 0))
-		 (cond ((pair? pattern)
-			(if (and (pair? data)
-				 (equal? (car data) (car pattern)))
-			    (lp (cdr data) (cdr pattern) (+ n 1))
-			    #f))
-		       ((not (null? pattern)) #f)
-		       (else (succeed dictionary n))))
-	       (let ((n (length data)))
-		 (let lp ((i 0))
-		   (if (<= i n)
-		       (or (succeed (match:bind variable
-						(list-head data i)
-						dictionary)
-				    i)
-			   (lp (+ i 1)))
-		       #f)))))))
+         (let ((vcell (match:lookup variable dictionary)))
+           (if vcell
+             (let lp ((data data)
+                      (pattern (match:value vcell))
+                      (n 0))
+               (cond ((pair? pattern)
+                      (if (and (pair? data)
+                               (equal? (car data) (car pattern)))
+                        (lp (cdr data) (cdr pattern) (+ n 1))
+                        #f))
+                     ((not (null? pattern)) #f)
+                     (else (succeed dictionary n))))
+             (let ((n (length data)))
+               (let lp ((i 0))
+                 (if (<= i n)
+                   (or (succeed (match:bind variable
+                                            (list-head data i)
+                                            dictionary)
+                                i)
+                       (lp (+ i 1)))
+                   #f)))))))
   segment-match)
 
 (define (match:list . match-combinators)
@@ -132,7 +137,9 @@
   match:element?)
 
 (defhandler match:->combinators
-  (lambda (pattern) (match:segment (match:variable-name pattern)))
+  (lambda (pattern) (match:segment
+                 (match:variable-name pattern)
+                 (match:restrictions pattern)))
   match:segment?)
 
 (defhandler match:->combinators
