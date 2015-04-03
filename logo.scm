@@ -141,27 +141,28 @@
 ;;; Logo Language Evaluators
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define logo:eval
-  (make-generic-operator 3 'logo:eval
-    (lambda args (apply logo:eval-default args))))
-
-(define (logo:eval-default expr env canvas)
+(define (logo:eval-call expr env canvas)
   (case (car expr)
     ((rotate rt) (logo:builtin-rotate expr env canvas))
     ((forward fd) (logo:builtin-forward expr env canvas))
     (else (error 'call-not-implemented expr))))
 
 ;;; repeat causes its body to be eval'd 'count times.
-(defhandler logo:eval
-  (lambda (expr env canvas)
-    (let ((count (cadr expr))
-          (stmts (cddr expr)))
-      (do-n-times count
-        (lambda _
-          (for-each (lambda (stmt)
-                      (logo:eval stmt env canvas))
-                    stmts)))))
-  logo:repeat?)
+(define (logo:eval-repeat expr env canvas)
+  (let ((count (cadr expr))
+        (stmts (cddr expr)))
+    (do-n-times count
+      (lambda _
+        (for-each (lambda (stmt)
+                    (logo:eval stmt env canvas))
+                  stmts)))))
+
+;;; Generic evaluator
+(define logo:eval
+  (make-generic-operator 3 'logo:eval logo:eval-call))
+
+(defhandler logo:eval logo:eval-repeat logo:repeat?)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Logo Primitive Evaluators
