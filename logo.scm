@@ -67,6 +67,15 @@
   (logo:canvas:set-lines! canvas
     (cons line (logo:canvas:lines canvas))))
 
+(define (logo:canvas->uniform canvas)
+  (map (lambda (line)
+         (let ((x1 (caar   line))
+               (y1 (cadar  line))
+               (x2 (caadr  line))
+               (y2 (cadadr line)))
+           (list 'point x1 y1 x2 y2)))
+       (logo:canvas:lines canvas)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Example Logo Programs

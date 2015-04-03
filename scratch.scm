@@ -24,8 +24,9 @@
 (pp c)
 
 ;;; Convert the canvas into a uniform representation.
-(define u (logo/canvas->uniform c))
+(define u (logo:canvas->uniform c))
+(pp u)
 ;;; Use the backend to show the result.
-(the-backend/display u)
+(the-backend:display u)
 ;;; A graphics window should pop up and show a slanted line.
 |#
