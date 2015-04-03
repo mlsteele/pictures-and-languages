@@ -5,6 +5,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (load "ghelper")
+(load "matcher")
 (load "helpers")
 (load "logo")
 
