@@ -165,7 +165,7 @@
         (if (logo:procedure-exists name env)
           (logo:apply (environment-lookup env name)
                       (map (lambda (argexpr)
-                             (logo:eval argexpr env canvas))
+                             (logo:eval-numexpr argexpr env canvas))
                            argexprs)
                       env canvas)
           (error 'call-unbound-logo-var name))))))
@@ -201,6 +201,14 @@
     (environment-define env name
       (logo:procedure:new name argnames stmts))))
 
+;;; This is not installed in the generic evaluator, because numexprs are
+;;; not first-class citizens of the logo language.
+;;; They are only the arguments to call's.
+;;; We cheat here by using eval. This is a security vulnerability as arbitrary
+;;; code with side-effects could occur here.
+(define (logo:eval-numexpr expr env canvas)
+  (eval expr env))
+
 ;;; Generic evaluator
 (define logo:eval
   (make-generic-operator 3 'logo:eval))
@@ -217,11 +225,15 @@
 ;;; These operations cause events to 'happen' by mutating the canvas.
 
 (define (logo:builtin-rotate expr env canvas)
+  (if (not (= 2 (length expr)))
+    (error 'arity-mismatch 'builtin-rotate))
   (let ((turtle (logo:canvas:turtle canvas))
         (angle (cadr expr)))
     (logo:turtle:rotate turtle angle)))
 
 (define (logo:builtin-forward expr env canvas)
+  (if (not (= 2 (length expr)))
+    (error 'arity-mismatch 'builtin-rotate))
   (let* ((distance (cadr expr))
          (turtle (logo:canvas:turtle canvas))
          (oldpos (logo:turtle:pos turtle)))
@@ -258,6 +270,8 @@
 (logo:eval '(repeat 4 (fd 100)) e c)
 (logo:eval '(to (revline) (rt 180) (fd 100)) e c)
 (logo:eval '(revline) e c)
+(logo:eval '(to (square size) (repeat 4 (fd 100) (rt 90))) e c)
+(logo:eval '(square 100) e c)
 
 (pp (logo:canvas:turtle c))
 (pp c)
@@ -279,20 +293,16 @@
       (let ((input (read)))
         (display "\n")
         (display input)
-        (if (logo:repl-terminator input)
+        (if (logo:repl-terminator? input)
           canvas
           (begin
             (logo:eval input env canvas)
             (loop)))))
     (loop)))
 
-(define (logo:repl-terminator input)
-  (or (eqv? input 'commit)
-      (and (list? input)
-           (= 1 (length input))
-           (eqv? 'commit (car input)))))
-
-(logo:repl-terminator '(commit))
+(define (logo:repl-terminator? input)
+  (or (equal? input 'commit)
+      (equal? input '(commit))))
 
 #| Usage Example
 (define result-canvas (logo:repl))
@@ -306,6 +316,11 @@
     (fd 100)
     (rt 90)))
 (square)
+(to (square size)
+  (repeat 4
+    (fd size)
+    (rt 90)))
+(square 10)
 (commit)
 
 (pp result-canvas)
