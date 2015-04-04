@@ -156,18 +156,18 @@
        (logo:procedure? (environment-lookup env name))))
 
 (define (logo:eval-call expr env canvas)
-  (let ((name     (car expr))
-        (argexprs (cdr expr)))
+  (let* ((name     (car expr))
+         (argexprs (cdr expr))
+         (argvals  (map (lambda (argexpr)
+                          (logo:eval-numexpr argexpr env canvas))
+                        argexprs)))
     (case name
-      ((rotate rt) (logo:builtin-rotate expr env canvas))
-      ((forward fd) (logo:builtin-forward expr env canvas))
+      ((rotate rt)  (logo:builtin-rotate argvals canvas))
+      ((forward fd) (logo:builtin-forward argvals canvas))
       (else
         (if (logo:procedure-exists name env)
           (logo:apply (environment-lookup env name)
-                      (map (lambda (argexpr)
-                             (logo:eval-numexpr argexpr env canvas))
-                           argexprs)
-                      env canvas)
+                      argvals env canvas)
           (error 'call-unbound-logo-var name))))))
 
 ;;; Apply a logo:procedure called within 'env.
@@ -224,17 +224,17 @@
 
 ;;; These operations cause events to 'happen' by mutating the canvas.
 
-(define (logo:builtin-rotate expr env canvas)
-  (if (not (= 2 (length expr)))
+(define (logo:builtin-rotate argvals canvas)
+  (if (not (= 1 (length argvals)))
     (error 'arity-mismatch 'builtin-rotate))
-  (let ((turtle (logo:canvas:turtle canvas))
-        (angle (cadr expr)))
+  (let ((angle (car argvals))
+        (turtle (logo:canvas:turtle canvas)))
     (logo:turtle:rotate turtle angle)))
 
-(define (logo:builtin-forward expr env canvas)
-  (if (not (= 2 (length expr)))
-    (error 'arity-mismatch 'builtin-rotate))
-  (let* ((distance (cadr expr))
+(define (logo:builtin-forward argvals canvas)
+  (if (not (= 1 (length argvals)))
+    (error 'arity-mismatch 'builtin-forward))
+  (let* ((distance (car argvals))
          (turtle (logo:canvas:turtle canvas))
          (oldpos (logo:turtle:pos turtle)))
     (logo:turtle:forward turtle distance)
@@ -270,8 +270,8 @@
 (logo:eval '(repeat 4 (fd 100)) e c)
 (logo:eval '(to (revline) (rt 180) (fd 100)) e c)
 (logo:eval '(revline) e c)
-(logo:eval '(to (square size) (repeat 4 (fd 100) (rt 90))) e c)
-(logo:eval '(square 100) e c)
+(logo:eval '(to (square size) (repeat 4 (fd size) (rt 90))) e c)
+(logo:eval '(square 50) e c)
 
 (pp (logo:canvas:turtle c))
 (pp c)
