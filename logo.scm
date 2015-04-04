@@ -306,21 +306,17 @@
 
 #| Usage Example
 (define result-canvas (logo:repl))
+;;; You should now see a "logo>" prompt.
 
 ;;; Into REPL
 (fd 10)
-(rt 90)
+(rt 25)
 (fd 10)
-(to (square)
-  (repeat 4
-    (fd 100)
-    (rt 90)))
-(square)
 (to (square size)
   (repeat 4
     (fd size)
     (rt 90)))
-(square 10)
+(square 100)
 (commit)
 
 (pp result-canvas)
