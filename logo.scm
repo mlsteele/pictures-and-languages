@@ -309,15 +309,15 @@
 ;;; You should now see a "logo>" prompt.
 
 ;;; Into REPL
-(fd 10)
-(rt 25)
-(fd 10)
 (to (square size)
   (repeat 4
     (fd size)
     (rt 90)))
 (square 100)
+;;; (commit) terminates the repl and returns the canvas
 (commit)
 
+;;; Print the canvas, which contains 4 lines forming a square.
 (pp result-canvas)
+(pp (logo:canvas->uniform result-canvas))
 |#
