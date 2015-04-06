@@ -20,6 +20,15 @@
 
 
 ;;; Draw operations assume a graphics device has been started.
+(define (draw d expr)
+  (assert d)
+  (cond ((draw:point? expr)
+	 (draw:point d expr))
+	((draw:line? expr)
+	 (draw:line d expr))
+	(else
+	 (error "Not a valid uniform representation" expr))))
+
 (define (draw:point d expr)
   (assert (draw:point? expr))
   (assert d)
