@@ -18,6 +18,11 @@
         (proc)
         (loop (- n 1))))))
 
+(define (tagged-list? expr tag)
+  (if (pair? expr)
+      (eq? (car expr) tag)
+      #f))
+
 ;;; Lookup a procedure when it is called.
 ;;; This defends against pass-by-value binding of procedures.
 ;;; This makes development easier, but a little more dangerous.
