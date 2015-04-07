@@ -91,12 +91,15 @@
     (cons line (logo:canvas:lines canvas))))
 
 (define (logo:canvas->uniform canvas)
+  (define (tx x) (/ x 100))
+  (define (ty y) (/ y 100))
   (map (lambda (line)
          (let ((x1 (caar   line))
                (y1 (cadar  line))
                (x2 (caadr  line))
                (y2 (cadadr line)))
-           (list 'point x1 y1 x2 y2)))
+           (list 'line (tx x1) (ty y1)
+                       (tx x2) (ty y2))))
        (logo:canvas:lines canvas)))
 
 
@@ -285,6 +288,7 @@
 
 ;;; Start an interactive logo repl
 ;;; Terminate by entering "commit" or "(commit)"
+;;; Returns the canvas
 (define (logo:repl)
   (let ((canvas (logo:canvas:new))
         (env (make-root-top-level-environment)))
