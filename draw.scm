@@ -23,6 +23,9 @@
   (draw:start-graphics!)
   (for-each (lambda (ele) (draw:do device ele)) ur))
 
+(define test-ur '((line 0 0 1 1)
+		  (line -1 -1 1/2 1/2)
+		  (line -1/2 -1/2 1/2 -1/2)))
 ;;; Draw: operations assume a graphics device has been started.
 (define (draw:do d expr)
   (assert d)
