@@ -19,8 +19,12 @@
   (set! device #f))
 
 
-;;; Draw operations assume a graphics device has been started.
-(define (draw d expr)
+(define (draw ur)
+  (draw:start-graphics!)
+  (for-each (lambda (ele) (draw:do device ele)) ur))
+
+;;; Draw: operations assume a graphics device has been started.
+(define (draw:do d expr)
   (assert d)
   (cond ((draw:point? expr)
 	 (draw:point d expr))
