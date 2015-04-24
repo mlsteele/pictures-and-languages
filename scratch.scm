@@ -30,8 +30,7 @@
 (define u (logo:canvas->uniform c))
 (pp u)
 ;;; Use the backend to show the result.
-(draw:start-graphics!)
-(for-each (lambda (expr) (draw device expr)) u)
+(draw u)
 (draw:close-graphics!)
 ;;; A graphics window should pop up and show a slanted line.
 
@@ -49,5 +48,5 @@
 (square 20)
 ;;; (commit) terminates the repl and returns the canvas
 (commit)
-(for-each (lambda (expr) (draw device expr)) u)
+(draw u)
 |#

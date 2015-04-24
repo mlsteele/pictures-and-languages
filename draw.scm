@@ -15,7 +15,8 @@
   (set! device (make-graphics-device (car (enumerate-graphics-types)))))
 
 (define (draw:close-graphics!)
-  (graphics-close device)
+  (and device
+       (graphics-close device))
   (set! device #f))
 
 
