@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg height="210" width="500">
+  <line x1="0" y1="0" x2="200" y2="200" style="stroke:rgb(0,0,0);stroke-width:1" />
+  <line x1="1" y1="2" x2="300" y2="100" style="stroke:rgb(0,0,0);stroke-width:1" />
+</svg>
