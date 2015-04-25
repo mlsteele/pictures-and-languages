@@ -7,6 +7,7 @@
 (load "ghelper")
 (load "matcher")
 (load "helpers")
+(load "uniform-representation")
 (load "logo")
 (load "draw")
 (load "svg")
@@ -49,8 +50,10 @@
 (square 20)
 ;;; (commit) terminates the repl and returns the canvas
 (commit)
-(draw u)
+
+(draw (ur-scale 1/100 1/100 u))
 
 ;;; Save the drawing as an SVG.
-(ur->svg-file u "out.svg")
+(pp u)
+(ur->svg-file (ur-translate 50 50 u) "out.svg")
 |#

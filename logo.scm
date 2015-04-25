@@ -91,15 +91,12 @@
     (cons line (logo:canvas:lines canvas))))
 
 (define (logo:canvas->uniform canvas)
-  (define (tx x) (/ x 100))
-  (define (ty y) (/ y 100))
   (map (lambda (line)
          (let ((x1 (caar   line))
                (y1 (cadar  line))
                (x2 (caadr  line))
                (y2 (cadadr line)))
-           (list 'line (tx x1) (ty y1)
-                       (tx x2) (ty y2))))
+           (list 'line x1 y1 x2 y2)))
        (logo:canvas:lines canvas)))
 
 
