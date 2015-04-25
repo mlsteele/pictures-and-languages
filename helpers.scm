@@ -40,6 +40,21 @@
 (foo-proxy) ; 2
 |#
 
+;;; Apply each of procs to each corresponding value.
+(define (zip-apply procs values)
+  (ensure (= (length procs) (length values))
+          "zip-apply procs and values must have same length")
+  (if (null? values)
+    '()
+    (cons ((car procs) (car values))
+          (zip-apply (cdr procs) (cdr values)))))
+
+#| Test Cases
+(define (inc x) (+ x 1))
+(define (dec x) (- x 1))
+(zip-apply (list inc inc dec) '(5 12 40)) ; '(6 13 39)
+|#
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Generic pretty printer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
