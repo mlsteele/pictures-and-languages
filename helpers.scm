@@ -55,3 +55,22 @@
 #| Example
 (pp '()) ; <null>
 |#
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Safety Checking
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; Error reporting helper
+(define (ensure predicate message)
+  (let ((nil '()))
+    (if (not (eq? #t predicate))
+      (error message))))
+
+
+#| Test Cases
+(ensure #t "bad news") ; nothing
+(ensure #f "bad news") ; "bad news"
+(ensure 1 "bad news") ; "bad news"
+(ensure (lambda () #t) "bad news") ; "bad news" (b/c lambda is not true)
+|#
