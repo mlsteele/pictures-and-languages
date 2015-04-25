@@ -2,7 +2,6 @@
 ;;;
 ;;; Tools for rendering a Uniform Represention to SVG.
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SVG Generator
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35,14 +34,30 @@
         "\" style=\"stroke:rgb(0,0,0);stroke-width:1\" />\n")))
 
 #| Test Cases
-(display
+(define s
   (svg:document (list
     (svg:line 0 0 200 200)
     (svg:line 0 0 100 200))))
+(display s) ; svg string
 |#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; File Handlers
+;;; Uniform Representation Converter
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; Convert a uniform rep to an SVG string.
+(define (ur->svg ur)
+  (svg:document
+    (map (lambda (ele)
+      (case (car ele)
+        ((line) (apply svg:line (cdr ele)))
+        (else (error "ur->svg does not recognize ur element" ele))))
+      ur)))
+
+(define (ur->svg-file u filename)
+  (let ((s (ur->svg u)))
+    (ensure (string? s) "s had better be a string to write")
+    (call-with-output-file "out.svg"
+      (lambda (f)
+        (write-string s f)))))

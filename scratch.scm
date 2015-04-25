@@ -9,6 +9,7 @@
 (load "helpers")
 (load "logo")
 (load "draw")
+(load "svg")
 
 
 #| Example of Logo Usage
@@ -49,4 +50,7 @@
 ;;; (commit) terminates the repl and returns the canvas
 (commit)
 (draw u)
+
+;;; Save the drawing as an SVG.
+(ur->svg-file u "out.svg")
 |#
