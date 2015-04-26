@@ -30,10 +30,13 @@
   (tagged-list? expr 'startshape))
 
 (define (ctxf:shape? expr)
-  3)
+  (tagged-list? expr 'shape))
 
 (define (ctxf:primitive? expr)
-  4)
+  (or (ctx:primitive:square? expr)
+      (ctx:primitive:circle? expr) 
+      (ctx:primitive:triangle? expr)))
+
 (define (ctxf:primitive:square? expr)
   (tagged-list? expr 'square))
 
@@ -43,6 +46,16 @@
 (define (ctxf:primitive:triangle? expr)
   (tagged-list? expr 'triangle))
 
+(define (ctxf:rule? expr)
+  (tagged-list? expr 'rule))
+
+(define (ctxf:shape-var? expr)
+  '()) ;todo
+
+(define (ctxf:assign-var? expr)
+  '()) ;todo, will probably to matcher on (var = ...) somehow
+;; also need to make sure that top level commands are only startshape, shape,
+;; and rule. no primitives, no shape-var, no assign-var.
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
