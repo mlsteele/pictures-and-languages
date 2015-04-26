@@ -30,9 +30,10 @@
   (tagged-list? expr 'startshape))
 
 (define (ctxf:shape? expr)
-  (
+  3)
 
-prmi
+(define (ctxf:primitive? expr)
+  4)
 (define (ctxf:primitive:square? expr)
   (tagged-list? expr 'square))
 
