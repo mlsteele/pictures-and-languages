@@ -72,12 +72,31 @@
 (define (draw:slow-line d expr speed)
   (assert (draw:line? expr))
   (assert d)
-  ;; todo... will fix soon.
+  (define num-points 1000)
+  (define ms-delay 1)
   (let ((x1 (draw:line:get 'x1 expr))
 	(y1 (draw:line:get 'y1 expr))
 	(x2 (draw:line:get 'x2 expr))
 	(y2 (draw:line:get 'y2 expr)))
-    (graphics-draw-line d x1 y1 x2 y2)))
+    (let ((pixels (get-line-pixels num-points x1 y1 x2 y2)))
+      (for-each (lambda (px)
+		  (graphics-draw-point d (car px) (cadr px))
+		  (sleep ms-delay))
+		pixels))))
+(define (get-line-pixels num-points x1 y1 x2 y2)
+  (define pixels (make-vector num-points))
+  (define delx (/ (- x2 x1) (- num-points 1)))
+  (define dely (/ (- y2 y1) (- num-points 1)))
+  (define (get-pixels-do n)
+    (if (= n num-points)
+        pixels
+	(begin
+	  (vector-set! pixels n
+		       (list (+ x1 (* n delx))
+			     (+ y1 (* n dely))))
+	  (get-pixels-do (+ n 1)))))
+  (vector->list (get-pixels-do 0)))
+
 
 (define (draw:slow-point d expr speed)
   (draw:point d expr))

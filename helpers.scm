@@ -23,6 +23,12 @@
       (eq? (car expr) tag)
       #f))
 
+(define (sleep millis)
+  (sleep-current-thread (floor->exact millis)))
+
+(define (sleep-seconds secs)
+  (sleep-current-thread (floor->exact (* 1000 secs))))
+
 ;;; Lookup a procedure when it is called.
 ;;; This defends against pass-by-value binding of procedures.
 ;;; This makes development easier, but a little more dangerous.
