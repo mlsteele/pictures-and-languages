@@ -26,18 +26,53 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Recognize the three primitive shapes in CTXF
+(define (ctxf:startshape? expr)
+  (tagged-list? expr 'startshape))
+
+(define (ctxf:shape? expr)
+  (
+
+prmi
 (define (ctxf:primitive:square? expr)
   (tagged-list? expr 'square))
 
 (define (ctxf:primitive:circle? expr)
   (tagged-list? expr 'circle))
 
-(define (ctxf:primtive-triangle? expr)
+(define (ctxf:primitive:triangle? expr)
   (tagged-list? expr 'triangle))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Logo Language Evaluators
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; For now, the user will have to write everything inside a (ctxf '( ... ))
+;;; function, e.g.
+;;; (ctxf '(
+;;;   (startshape S)
+;;;   ...
+;;;   ...))
+
+;;; possible commands: startshape, shape, square, circle, triangle, rule,
+;;;                    <shapename>, <variablename>
+;;; yes, we do allow assigning [infix] variables, e.g. (x = 3) etc
+
+(define (ctxf input-lines)
+  (assert (and (not (null? input-lines))
+	       (ctxf:startshape? (car input-lines))))
+  (for-each (lambda (command)
+	      (ctxf:eval command))
+	    input-lines))
+
+(define ctxf:eval (make-generic-operator 3 'ctxf:eval))
+(defhandler ctxf:eval (lookup-later 'ctxf:eval:startshape) ctxf:startshape?)
+(defhandler ctxf:eval (lookup-later 'ctxf:eval:shape) ctxf:shape?)
+(defhandler ctxf:eval (lookup-later 'ctxf:eval:primitive) ctxf:primitive?)
+(defhandler ctxf:eval (lookup-later 'ctxf:eval:rule) ctxf:rule?)
+(defhandler ctxf:eval (lookup-later 'ctxf:eval:shape-var) ctxf:shape-var?)
+(defhandler ctxf:eval (lookup-later 'ctxf:eval:assign-var) ctxf:assign-var?)
 
 ;;; CTXF envs inherit things from the system
 ;;; environment so that arithmetic works.
