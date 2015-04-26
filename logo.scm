@@ -142,6 +142,11 @@
 ;;; Logo Language Evaluators
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; Logo envs inherit things from the system
+;;; environment so that arithmetic works.
+(define (logo:make-env)
+    (make-top-level-environment))
+
 ;;; Type for evaluated Logo procedures as defined to 'to statements.
 ;;; These are stored in env.
 (define-record-type <logo:procedure>
@@ -262,7 +267,7 @@
 
 #| Example
 (define c (logo:canvas:new))
-(define e (make-root-top-level-environment))
+(define e (logo:make-env))
 
 (logo:eval '(rotate 10) e c)
 (logo:eval '(fd 100) e c)
@@ -288,7 +293,7 @@
 ;;; Returns the canvas
 (define (logo:repl)
   (let ((canvas (logo:canvas:new))
-        (env (make-root-top-level-environment)))
+        (env (logo:make-env)))
     (define (loop)
       (display "\nlogo> ")
       (let ((input (read)))

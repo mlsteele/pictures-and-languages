@@ -16,7 +16,7 @@
 #| Example of Logo Usage
 ;;; Make a new canvas
 (define c (logo:canvas:new))
-(define e (make-root-top-level-environment))
+(define e (logo:make-env))
 
 ;;; Run a really simple program in the logo interpreter.
 (logo:eval '(rotate 10) e c)
