@@ -21,11 +21,55 @@
   ;; todo
   )
 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Logo Language Recognizers
+;;; CTXF Definitions/Environment Sugar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; Recognize the three primitive shapes in CTXF
+(define (ctxf:define var e env)
+  (environment-define env var e))
+
+(define (ctxf:make-env)
+    (make-top-level-environment))
+
+(define (ctxf:exists? name env)
+  (eq? (environment-reference-type env name) 'normal))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; CTXF Shape/Variable Records
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-record-type <ctxf:shape>
+  (%ctxf:shape:new name body)
+  ctxf:shape?
+  (name     ctxf:shape:name)
+  (body     ctxf:shape:body))
+
+(define-record-type <ctxf:var>
+  (%ctxf:var:new name val)
+  ctxf:var?
+  (name ctxf:var:name)
+  (val  ctxf:var:val))
+
+(define (ctxf:define-shape name body env)
+  (ctxf:define name (%ctxf:shape:new name body) env))
+
+(define (ctxf:define-var name val env)
+  (ctxf:define name (%ctxf:var:new name val) env))
+
+(define (ctxf:shape-exists? name env)
+  (and (ctxf:exists? name env)
+       (ctxf:shape? (environment-lookup env name))))
+
+(define (ctxf:var-exists? name env)
+  (and (ctxf:exists? name env)
+       (ctxf:var? (environment-lookup env name))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; CTXF Language Recognizers
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (define (ctxf:startshape? expr)
   (tagged-list? expr 'startshape))
 
@@ -48,12 +92,26 @@
 
 (define (ctxf:rule? expr)
   (tagged-list? expr 'rule))
-
-(define (ctxf:shape-var? expr)
-  '()) ;todo
-
+  
+;; x = ...
 (define (ctxf:assign-var? expr)
-  '()) ;todo, will probably to matcher on (var = ...) somehow
+  (or (tagged-list? expr 'let)
+      (tagged-list? expr 'set)
+      (tagged-list? expr 'set!)
+      (tagged-list? expr '=)
+      (tagged-list? expr 'define)
+      (tagged-list? expr 'assign)))
+
+;; shapename [ ... ]
+(define (ctxf:shape-var? expr env)
+  (and (not (or (ctxf:startshape? expr)
+		(ctxf:shape? expr)
+		(ctxf:primitive? expr)
+		(ctxf:rule? expr)
+		(ctxf:assign-var? expr)))
+       #t)) ; was (ctxf:shape-exists? (car expr) env)
+
+;todo, will probably to matcher on (var = ...) somehow
 ;; also need to make sure that top level commands are only startshape, shape,
 ;; and rule. no primitives, no shape-var, no assign-var.
 
@@ -71,14 +129,14 @@
 
 ;;; possible commands: startshape, shape, square, circle, triangle, rule,
 ;;;                    <shapename>, <variablename>
-;;; yes, we do allow assigning [infix] variables, e.g. (x = 3) etc
 
 (define (ctxf input-lines)
   (assert (and (not (null? input-lines))
 	       (ctxf:startshape? (car input-lines))))
-  (for-each (lambda (command)
-	      (ctxf:eval command))
-	    input-lines))
+  (let ((env (ctxf:make-env)))
+    (for-each (lambda (command)
+		(ctxf:eval command env canvas))
+	      input-lines)))
 
 (define ctxf:eval (make-generic-operator 3 'ctxf:eval))
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:startshape) ctxf:startshape?)
@@ -88,10 +146,6 @@
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:shape-var) ctxf:shape-var?)
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:assign-var) ctxf:assign-var?)
 
-;;; CTXF envs inherit things from the system
-;;; environment so that arithmetic works.
-(define (ctxf:make-env)
-    (make-top-level-environment))
 
 ;;; Type for evaluated Logo procedures as defined to 'to statements.
 ;;; These are stored in env.
