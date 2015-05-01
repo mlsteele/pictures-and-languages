@@ -10,6 +10,7 @@
 ;;; - how to turn to the right (rotate or rt)
 ;;; - how to pick up its pen to stop drawing (pen-up)
 ;;; - how to pick drop its pen to continue drawing (pen-down)
+;;; - how to set the pen color (color "blue")
 ;;;
 ;;; The turtle starts at (0 0) with its pen down, ready to draw.
 ;;;
@@ -90,27 +91,20 @@
 
 ;;; A Logo canvas holds the graphical state of a logo program.
 ;;; This includes where the turtle is, and what has been drawn so far.
+;;; What has been drawn is stored as a uniform representation object.
 (define-record-type <logo:canvas>
-    (%logo:canvas:new turtle lines)
+    (%logo:canvas:new turtle ur)
     logo:canvas?
   (turtle logo:canvas:turtle)
-  (lines  logo:canvas:lines logo:canvas:set-lines!))
+  (ur     logo:canvas:ur logo:canvas:set-ur!))
 
 (define (logo:canvas:new)
-  (%logo:canvas:new (logo:turtle:new) '()))
+  (%logo:canvas:new (logo:turtle:new) '() ))
 
-(define (logo:canvas:add-line canvas line)
-  (logo:canvas:set-lines! canvas
-    (cons line (logo:canvas:lines canvas))))
-
-(define (logo:canvas->uniform canvas)
-  (map (lambda (line)
-         (let ((x1 (caar   line))
-               (y1 (cadar  line))
-               (x2 (caadr  line))
-               (y2 (cadadr line)))
-           (list 'line x1 y1 x2 y2)))
-       (logo:canvas:lines canvas)))
+(define (logo:canvas:ur-add! canvas ele)
+  (logo:canvas:set-ur! canvas
+    (append (logo:canvas:ur canvas)
+            (list ele))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -120,11 +114,12 @@
 (define (logo:name? expr)
   (symbol? expr))
 
-;;; A numexpr is anything which evaluates to a number.
+;;; A valexpr is anything which evaluates to a number.
 ;;; It could be a number, name, or numeric scheme expression
-(define (logo:numexpr? expr)
+(define (logo:valexpr? expr)
   (or (logo:name? expr)
       (number? expr)
+      (string? expr) ; for colors
       (list? expr)))
 
 (define ((match:->simple pattern) input)
@@ -135,7 +130,7 @@
 
 (define logo:repeat?
   (match:->simple
-    `(repeat (? count ,logo:numexpr?) (?? stmts))))
+    `(repeat (? count ,logo:valexpr?) (?? stmts))))
 
 (define logo:to?
   (match:->simple
@@ -143,7 +138,7 @@
 
 (define logo:limit?
   (match:->simple
-    `(limit (? var ,symbol?) (? val ,logo:numexpr?))))
+    `(limit (? var ,symbol?) (? val ,logo:valexpr?))))
 
 (define (logo:call? expr)
   (and (not (or (logo:to? expr)
@@ -152,7 +147,7 @@
        (list? expr)
        (not (null? expr))
        (logo:name? (car expr))
-       (every logo:numexpr?
+       (every logo:valexpr?
               (cdr expr))))
 
 
@@ -182,13 +177,14 @@
   (let* ((name     (car expr))
          (argexprs (cdr expr))
          (argvals  (map (lambda (argexpr)
-                          (logo:eval-numexpr argexpr env canvas))
+                          (logo:eval-valexpr argexpr env canvas))
                         argexprs)))
     (case name
       ((rotate rt)  (logo:builtin-rotate argvals canvas))
       ((forward fd) (logo:builtin-forward argvals canvas))
       ((pen-up)     (logo:builtin-pen 'up canvas))
       ((pen-down)   (logo:builtin-pen 'down canvas))
+      ((color)      (logo:builtin-color argvals canvas))
       (else
         (if (logo:procedure-exists name env)
           (logo:apply (environment-lookup env name)
@@ -212,7 +208,7 @@
 ;;; repeat causes its body to be eval'd 'count times.
 (define (logo:eval-repeat expr env canvas)
   (let* ((countexpr (cadr expr))
-         (count (logo:eval-numexpr countexpr env canvas))
+         (count (logo:eval-valexpr countexpr env canvas))
          (stmts (cddr expr)))
     (do-n-times count
       (lambda _
@@ -231,16 +227,16 @@
 (define (logo:eval-limit expr env canvas)
   (let* ((valexpr (cadr expr))
          (limval  (caddr expr))
-         (curval  (logo:eval-numexpr valexpr env varname)))
+         (curval  (logo:eval-valexpr valexpr env varname)))
     (if (< curval limval)
       'limit-reached)))
 
-;;; This is not installed in the generic evaluator, because numexprs are
+;;; This is not installed in the generic evaluator, because valexprs are
 ;;; not first-class citizens of the logo language.
 ;;; They are only the arguments to call's.
 ;;; We cheat here by using eval. This is a security vulnerability as arbitrary
 ;;; code with side-effects could occur here.
-(define (logo:eval-numexpr expr env canvas)
+(define (logo:eval-valexpr expr env canvas)
   (eval expr env))
 
 ;;; Generic evaluator
@@ -274,8 +270,11 @@
          (oldpos (logo:turtle:pos turtle)))
     (logo:turtle:forward turtle distance)
     (if (logo:turtle:pendown turtle)
-      (logo:canvas:add-line canvas
-        (list oldpos (logo:turtle:pos turtle))))))
+      (let* ((newpos (logo:turtle:pos turtle))
+             (line `(line ,(car oldpos) ,(cadr oldpos)
+                          ,(car newpos) ,(cadr newpos))))
+        (logo:canvas:ur-add! canvas line)
+        'ok))))
 
 ;;; Mode is 'up or 'down
 (define (logo:builtin-pen mode canvas)
@@ -285,10 +284,20 @@
       ((down) (logo:turtle:set-pendown! turtle #t))
       (else (error 'invalid-pen-mode mode)))))
 
+(define (logo:builtin-color argvals canvas)
+  (if (not (= 1 (length argvals)))
+    (error 'arity-mismatch 'builtin-color))
+  (let ((color (car argvals)))
+    (if (not (string? color))
+      (error 'not-a-color 'builtin-color color))
+    (logo:canvas:ur-add! canvas `(color ,color))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Example Logo Programs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; See logo-library and logo-examples for more up to date and exciting examples.
 
 (define example-tosq
   '(to (square size)

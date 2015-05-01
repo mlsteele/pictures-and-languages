@@ -10,6 +10,10 @@
   (and (tagged-list? expr 'line)
        (= (length expr) 5)))
 
+(define (draw:color? expr)
+  (and (tagged-list? expr 'color)
+       (= (length expr) 2)))
+
 (define device #f)
 (define (draw:start-graphics!)
   (set! device (make-graphics-device (car (enumerate-graphics-types)))))
@@ -34,6 +38,8 @@
 	 (draw:point d expr))
 	((draw:line? expr)
 	 (draw:line d expr))
+	((draw:color? expr)
+	 (draw:color d expr))
 	(else
 	 (error "Not a valid uniform representation" expr))))
 
@@ -59,6 +65,11 @@
 	((eq? ele 'y) (caddr expr))
 	(else
 	 (error "Can't query ele from point" ele expr))))
+
+(define (draw:color d expr)
+  (assert (draw:color? expr))
+  (assert d)
+  (graphics-operation d 'set-foreground-color (cadr expr)))
 
 (define (draw:line:get ele expr)
   (assert (draw:line? expr))

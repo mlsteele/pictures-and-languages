@@ -39,6 +39,7 @@ line = ('line x1 y1 x2 y2)
       ((line) (cons 'line
                     (zip-apply (list tx ty tx ty)
                                (cdr ele))))
+      ((color) ele)
       (else (error "ur-translate does not recognize ur element" ele))))
     ur))
 
@@ -62,7 +63,8 @@ line = ('line x1 y1 x2 y2)
       ((line) (cons 'line
                     (zip-apply (list tx ty tx ty)
                                (cdr ele))))
-      (else (error "ur-translate does not recognize ur element" ele))))
+      ((color) ele)
+      (else (error "ur-scale does not recognize ur element" ele))))
     ur))
 
 #| Test Cases

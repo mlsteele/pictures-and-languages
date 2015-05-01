@@ -38,8 +38,19 @@
 
 
 ;;; Now draw from repl input
-(define u (logo:canvas->uniform (logo:repl)))
+(define u (logo:canvas:ur (logo:repl)))
 ;;; Into REPL
+(to (dotted-line length)
+  (repeat (/ length 10)
+    (pen-up)
+    (fd 5)
+    (pen-down)
+    (fd 5)))
+(color "RED")
+(dotted-line 50)
+(rt 90)
+(color "blue")
+(dotted-line 50)
 ;;; (commit) terminates the repl and returns the canvas
 (commit)
 
