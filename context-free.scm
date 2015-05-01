@@ -146,6 +146,83 @@
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:shape-var) ctxf:shape-var?)
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:assign-var) ctxf:assign-var?)
 
+;; (startshape x)
+;; (startshape x (r 3 s 4 ... ))
+(define (ctxf:eval:startshape expr env transform canvas)
+  (let* ((name (cadr expr))
+	(this-transform (if (= 3 (length expr)) (caddr expr) '()))
+	(new-transform (ctxf:transform-unify transform this-transform)))
+    (ctxf:draw name new-transform)))
+
+;; (shape x ( (...) (...) ... )
+;; (shape x (rule ( ... )) (rule ( ... )) ... )
+(define (ctxf:eval:shape expr env transform canvas)
+  (if (> (length expr) 3) ;; so we have rules
+      (let ((ps (ctxf:rule-probabilities (cddr expr)))
+	    (r (random 1.0)))
+	(let lp ((ind 0))
+	  (if (= ind (- (length ps) 1))
+	      (ctxf:eval-seq (rule:get-seq (last expr)))
+	      (if (< r (sum (list-head ps (+ ind 1))))
+		  (ctxf:eval-seq (rule:get-seq
+				  (list-ref expr (+ ind 2)))) 
+		  (lp (+ ind 1))))))
+      (ctxf:eval-seq (caddr expr))))
+
+(define (ctxf:eval:primitive expr env transform canvas)
+  (if (= (length expr) 1)
+      (ctxf:draw-primitive (car expr) transform)
+      (let* ((t (cadr expr))
+	     (new-t (ctxf:transform-unify transform t)))
+	(ctxf:draw-primitive (car expr) new-t))))
+
+;; (rule ( .... ) )
+(define (ctxf:eval:rule expr env transform canvas)
+  (ctxf:eval-seq (rule:get-seq expr) env transform canvas))
+
+(define (ctxf:eval:shape-var expr env transform canvas)
+  )
+
+(define (ctxf:eval:assign-var expr env transform canvas)
+  )
+
+;; ( ( ... ) ( ... ) ( ... ) )
+(define (ctxf:eval-seq expr env transform canvas)
+  (pp `(evaluating sequence ,expr)))
+
+(define (rule:get-seq rule)
+  (if (= (length rule) 3)
+      (caddr rule)
+      (cadr rule)))
+
+;; ( (rule ( ... )) (rule 0.3 ( ... )) )
+(define (ctxf:rule-probabilities list-of-rules)
+  (let* ((unweighted
+	  (map$ list-of-rules
+		(lambda (rule)
+		  (if (number? (cadr rule))
+		      (cadr rule)
+		      1.0))))
+	 (s (sum unweighted))
+	 (weighted
+	  (map$ unweighted
+		(lambda (p)
+		  (/ p s)))))
+    weighted))
+	      
+
+(define-record-type <ctxf:startshape>
+  (%ctxf:startshape:new name params)
+    ctxf:startshape/record?
+  (name ctxf:startshape:name)
+  (params ctxf:startshape:params))
+
+(define-record-type <ctxf:startshape>
+  (%ctxf:startshape:new name params)
+    ctxf:startshape/record?
+  (name ctxf:startshape:name)
+  (params ctxf:startshape:params))
+
 
 ;;; Type for evaluated Logo procedures as defined to 'to statements.
 ;;; These are stored in env.

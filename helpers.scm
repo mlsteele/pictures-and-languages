@@ -29,6 +29,9 @@
 (define (sleep-seconds secs)
   (sleep-current-thread (floor->exact (* 1000 secs))))
 
+(define (sum li)
+  (fold-left + 0 li))
+
 ;;; Lookup a procedure when it is called.
 ;;; This defends against pass-by-value binding of procedures.
 ;;; This makes development easier, but a little more dangerous.
