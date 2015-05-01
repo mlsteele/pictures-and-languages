@@ -44,10 +44,13 @@
   (repeat 4
     (fd size)
     (rt 90)))
-(square 20)
-(square 30)
-(rt 135)
-(square 20)
+(to (spiral n)
+  (square (/ n 4))
+  (fd (/ n 20))
+  (rt 5)
+  (limit n 1)
+  (spiral (- n 1)))
+(spiral 100)
 ;;; (commit) terminates the repl and returns the canvas
 (commit)
 

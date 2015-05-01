@@ -61,6 +61,10 @@
 (zip-apply (list inc inc dec) '(5 12 40)) ; '(6 13 39)
 |#
 
+(define (for-each$ list f) (map f list))
+(define (map$ list f) (map f list))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Generic pretty printer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

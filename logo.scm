@@ -22,6 +22,19 @@
 ;;;
 ;;; And to invoke the square procedure and make the square happen:
 ;;;     (square 100)
+;;;
+;;; There are no return values from procedures in this Logo.
+;;; In order to to interesting recursive things, use the
+;;; limit form. The limit form takes a variable and a value
+;;; and makes sure that the variable stays above the value.
+;;; If the variable dips below the value, that call is immediately returned from.
+;;; This can be used to make recursive base cases. For example:
+;;;
+;;; (to (spiral n)
+;;;   (limit n 1)
+;;;   (fd (/ n 20))
+;;;   (rt 5)
+;;;   (spiral (- n 1)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Turtle Type
@@ -128,9 +141,14 @@
   (match:->simple
     `(to ((? name ,symbol?) (?? argnames)) (?? stmts))))
 
+(define logo:limit?
+  (match:->simple
+    `(limit (? var ,symbol?) (? val ,logo:numexpr?))))
+
 (define (logo:call? expr)
   (and (not (or (logo:to? expr)
-                (logo:repeat? expr)))
+                (logo:repeat? expr)
+                (logo:limit? expr)))
        (list? expr)
        (not (null? expr))
        (logo:name? (car expr))
@@ -184,9 +202,10 @@
       (error 'arity-mismatch name))
     (let ((invocation-env (extend-top-level-environment
                             env argnames argvals)))
-      (for-each (lambda (expr)
-                  (logo:eval expr invocation-env canvas))
-                body))))
+      (call-with-current-continuation (lambda (limit-stop)
+        (for-each$ body (lambda (expr)
+          (if (eq? (logo:eval expr invocation-env canvas) 'limit-reached)
+            (limit-stop 'ok)))))))))
 
 ;;; repeat causes its body to be eval'd 'count times.
 (define (logo:eval-repeat expr env canvas)
@@ -206,6 +225,13 @@
     (environment-define env name
       (logo:procedure:new name argnames stmts))))
 
+(define (logo:eval-limit expr env canvas)
+  (let* ((varname (cadr expr))
+         (limval  (caddr expr))
+         (curval  (environment-lookup env varname)))
+    (if (< curval limval)
+      'limit-reached)))
+
 ;;; This is not installed in the generic evaluator, because numexprs are
 ;;; not first-class citizens of the logo language.
 ;;; They are only the arguments to call's.
@@ -221,6 +247,7 @@
 (defhandler logo:eval (lookup-later 'logo:eval-repeat) logo:repeat?)
 (defhandler logo:eval (lookup-later 'logo:eval-call)   logo:call?)
 (defhandler logo:eval (lookup-later 'logo:eval-to)     logo:to?)
+(defhandler logo:eval (lookup-later 'logo:eval-limit)  logo:limit?)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
