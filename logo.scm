@@ -209,8 +209,9 @@
 
 ;;; repeat causes its body to be eval'd 'count times.
 (define (logo:eval-repeat expr env canvas)
-  (let ((count (cadr expr))
-        (stmts (cddr expr)))
+  (let* ((countexpr (cadr expr))
+         (count (logo:eval-numexpr countexpr env canvas))
+         (stmts (cddr expr)))
     (do-n-times count
       (lambda _
         (for-each (lambda (stmt)
@@ -226,9 +227,9 @@
       (logo:procedure:new name argnames stmts))))
 
 (define (logo:eval-limit expr env canvas)
-  (let* ((varname (cadr expr))
+  (let* ((valexpr (cadr expr))
          (limval  (caddr expr))
-         (curval  (environment-lookup env varname)))
+         (curval  (logo:eval-numexpr valexpr env varname)))
     (if (< curval limval)
       'limit-reached)))
 
