@@ -16,3 +16,10 @@
 
 (to (pentagon size)
   (ngon 5 size))
+
+(to (dotted-line length)
+  (repeat (/ length 10)
+    (fd 5)
+    (pen-up)
+    (fd 5)
+    (pen-down)))

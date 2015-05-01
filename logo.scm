@@ -8,8 +8,8 @@
 ;;; The turtle knows several primitive commands:
 ;;; - how to move forwards (forward or fd)
 ;;; - how to turn to the right (rotate or rt)
-;;; - how to pick up its pen to stop drawing (penup)
-;;; - how to pick drop its pen to continue drawing (pendown)
+;;; - how to pick up its pen to stop drawing (pen-up)
+;;; - how to pick drop its pen to continue drawing (pen-down)
 ;;;
 ;;; The turtle starts at (0 0) with its pen down, ready to draw.
 ;;;
@@ -187,6 +187,8 @@
     (case name
       ((rotate rt)  (logo:builtin-rotate argvals canvas))
       ((forward fd) (logo:builtin-forward argvals canvas))
+      ((pen-up)     (logo:builtin-pen 'up canvas))
+      ((pen-down)   (logo:builtin-pen 'down canvas))
       (else
         (if (logo:procedure-exists name env)
           (logo:apply (environment-lookup env name)
@@ -271,8 +273,17 @@
          (turtle (logo:canvas:turtle canvas))
          (oldpos (logo:turtle:pos turtle)))
     (logo:turtle:forward turtle distance)
-    (logo:canvas:add-line canvas
-      (list oldpos (logo:turtle:pos turtle)))))
+    (if (logo:turtle:pendown turtle)
+      (logo:canvas:add-line canvas
+        (list oldpos (logo:turtle:pos turtle))))))
+
+;;; Mode is 'up or 'down
+(define (logo:builtin-pen mode canvas)
+  (let ((turtle (logo:canvas:turtle canvas)))
+    (case mode
+      ((up)   (logo:turtle:set-pendown! turtle #f))
+      ((down) (logo:turtle:set-pendown! turtle #t))
+      (else (error 'invalid-pen-mode mode)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

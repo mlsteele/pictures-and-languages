@@ -40,18 +40,6 @@
 ;;; Now draw from repl input
 (define u (logo:canvas->uniform (logo:repl)))
 ;;; Into REPL
-(to (ngon sides size)
-  (repeat sides
-    (fd size)
-    (rt (/ 360 sides))))
-(to (at-corner)
-  (ngon 4 10))
-(to (ngon-decorated sides size decoration)
-  (repeat sides
-    (decoration)
-    (fd size)
-    (rt (/ 360 sides))))
-(ngon-decorated 5 20 at-corner)
 ;;; (commit) terminates the repl and returns the canvas
 (commit)
 
