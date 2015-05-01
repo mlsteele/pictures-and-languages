@@ -322,6 +322,7 @@
 (define (logo:repl)
   (let ((canvas (logo:canvas:new))
         (env (logo:make-env)))
+    (logo:eval-file "logo-library.scm" env canvas)
     (define (loop)
       (display "\nlogo> ")
       (let ((input (read)))
@@ -337,6 +338,18 @@
 (define (logo:repl-terminator? input)
   (or (equal? input 'commit)
       (equal? input '(commit))))
+
+;;; Whether the repl should autoload logo-library
+(define logo-load-lib #t)
+
+(define (logo:eval-file filename env canvas)
+  (call-with-input-file filename (lambda (port)
+    (let loop ((input (read port)))
+      (if (eof-object? input)
+        'ok
+        (begin
+          (logo:eval input env canvas)
+          (loop (read port))))))))
 
 #| Usage Example
 (define result-canvas (logo:repl))
