@@ -147,6 +147,8 @@
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:shape-var) ctxf:shape-var?)
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:assign-var) ctxf:assign-var?)
 
+
+  
 ;; possible transforms:
 ;; x # translate by # in x
 ;; y # translate by # in y
@@ -158,7 +160,7 @@
 ;; {flipy, fy} flip across y axis
 ;; {dflip, df} # flip across line through center that's # degrees above horiz
 ;; {rflip, rf} # flip across line through center that's # rads above horiz
-(define (ctxf:transform-unify t1 t2)
+(define (ctxf:transform-unify matrix t2)
   .. unify (i.e. typically multiply) transform matrices
   )
   
