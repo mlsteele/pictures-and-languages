@@ -56,11 +56,11 @@
 
 (define (t:rotate units val)
   (let ((theta (cond ((eq? units 'degrees)
-		      (degrees->radians val))
+		      (degrees->rads val))
 		     ((eq? units 'radians)
 		      radians)
 		     (else
 		      (error "Units of incorrect type!" units)))))
-    (%matrix:new `((,(cos theta) ,-(sin theta) 0)
+    (%matrix:new `((,(cos theta) ,(sin (- 0 theta)) 0)
 		   (,(sin theta) ,(cos theta) 0)
 		   (0 0 1)))))
