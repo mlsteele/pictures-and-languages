@@ -8,7 +8,7 @@
 (define-record-type <ctxf:canvas>
     (%ctxf:canvas:new shapes)
     ctxf:canvas?
-  (lines ctxf:canvas:shapes ctxf:canvas:set-shapes!))
+  (shapes ctxf:canvas:shapes ctxf:canvas:set-shapes!))
 
 (define (ctxf:canvas:new)
   (%ctxf:canvas:new '()))
@@ -18,7 +18,7 @@
     (cons shape (ctxf:canvas:shapes canvas))))
 
 (define (ctxf:canvas->uniform canvas)
-  ;; todo
+  3
   )
 
 
@@ -41,10 +41,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-record-type <ctxf:shape>
-  (%ctxf:shape:new name body)
+  (%ctxf:shape:new name rules)
   ctxf:shape?
   (name     ctxf:shape:name)
-  (body     ctxf:shape:body))
+  (rules     ctxf:shape:rules))
 
 (define-record-type <ctxf:var>
   (%ctxf:var:new name val)
@@ -92,15 +92,18 @@
 
 (define (ctxf:rule? expr)
   (tagged-list? expr 'rule))
-  
+
 ;; x = ...
-(define (ctxf:assign-var? expr)
+(define (ctxf:assign-const? expr)
   (or (tagged-list? expr 'let)
       (tagged-list? expr 'set)
       (tagged-list? expr 'set!)
       (tagged-list? expr '=)
       (tagged-list? expr 'define)
-      (tagged-list? expr 'assign)))
+      (tagged-list? expr 'assign)
+      (tagged-list? expr 'const)
+      (tagged-list? expr 'constant)))
+
 
 ;; shapename [ ... ]
 (define (ctxf:shape-var? expr env)
@@ -135,23 +138,33 @@
 	       (ctxf:startshape? (car input-lines))))
   (let ((env (ctxf:make-env)))
     (for-each (lambda (command)
+		(ctxf:analyze command env canvas))
+	      input-lines)
+    (for-each (lambda (command)
 		(ctxf:eval command env canvas))
 	      input-lines)
     (ctxf:execute (car input-lines) env)))
 
 (define ctxf:eval (make-generic-operator 3 'ctxf:eval))
-(defhandler ctxf:eval (lookup-later 'ctxf:eval:startshape) ctxf:startshape?)
-(defhandler ctxf:eval (lookup-later 'ctxf:eval:shape) ctxf:shape?)
-(defhandler ctxf:eval (lookup-later 'ctxf:eval:primitive) ctxf:primitive?)
-(defhandler ctxf:eval (lookup-later 'ctxf:eval:rule) ctxf:rule?)
-(defhandler ctxf:eval (lookup-later 'ctxf:eval:shape-var) ctxf:shape-var?)
-(defhandler ctxf:eval (lookup-later 'ctxf:eval:assign-var) ctxf:assign-var?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:startshape) ctxf:startshape?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:shape) ctxf:shape?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:primitive) ctxf:primitive?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:rule) ctxf:rule?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:shape-var) ctxf:shape-var?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:assign-const) ctxf:assign-const?)
 
 
 (define (ctxf:numexpr? expr env)
   (or (number? expr)
       (list? expr)
       (ctxf:var-exists? expr env)))
+
 ;; possible transforms:
 ;; x # translate by # in x
 ;; y # translate by # in y
@@ -166,7 +179,70 @@
 (define (ctxf:transform-unify matrix t2)
   .. unify (i.e. typically multiply) transform matrices
   )
-  
+
+
+(define ctxf:analyze (make-generic-operator 2 'ctxf:analyze))
+(defhandler ctxf:analyze
+  (lookup-later 'ctxf:analyze:startshape) ctxf:startshape?)
+(defhandler ctxf:analyze
+  (lookup-later 'ctxf:analyze:shape) ctxf:shape?)
+(defhandler ctxf:analyze
+  (lookup-later 'ctxf:analyze:const) ctxf:assign-const?)
+
+;;;;;;
+;;;;;; analysis
+;;;;;;
+;;;;;;
+
+;; only let them have one startshape
+(define (ctxf:analyze:startshape expr env)
+  (let ((name (cadr expr))
+	(transforms (if (= 3 (length expr))
+			(caddr expr)
+			'())))
+    (ensure (not (ctxf:exists? 'STARTSHAPE-EXISTS env))
+	    "A startshape was already created!")
+    (ctxf:define 'STARTSHAPE-EXISTS #t env)
+    (ctxf:define 'STARTSHAPE-NAME name env)
+    (ctxf:define-shape name transforms env)))
+
+;; only let them assign a given shape once
+(define (ctxf:analyze:shape expr env)
+  (let ((name (cadr expr))
+	(rules (if (> 2 (length epr))
+		    (caddr expr)
+		    '())))
+    (if (ctxf:shape-exists? name env)
+	(error "Shape already exists--cannot redefine it!" name))
+    (ctxf:define-shape name (%ctxf:shape:new name rules))))
+
+;; we'll only let them assign a constant once
+(define (ctxf:analyze:const expr env)
+  (let ((name (cadr expr))
+	(val (caddr expr)))
+    (ensure (not (ctxf:var-exists name env))
+	    "Constants cannot be redefined!! Idiot")
+    (ctxf:define-var name val env)))
+
+(define (ctxf/test input-lines)
+  (assert (and (not (null? input-lines))
+	       (ctxf:startshape? (car input-lines))))
+  (let ((env (ctxf:make-env)))
+    (for-each (lambda (command)
+		(ctxf:analyze command env canvas))
+	      input-lines)))
+#|
+ (ctxf/test '(
+	     (startshape X)
+	     (shape X)
+	     (shape Y)
+	     (const x 3)))
+|#
+;;;;;;
+;;;;;; eval
+;;;;;;
+;;;;;;
+
 
 ;; (startshape x)
 ;; (startshape x (r 3 s 4 ... ))
@@ -203,10 +279,10 @@
   (ctxf:eval-seq (rule:get-seq expr) env transform canvas))
 
 (define (ctxf:eval:shape-var expr env transform canvas)
-  )
+  3)
 
 (define (ctxf:eval:assign-var expr env transform canvas)
-  )
+  3)
 
 ;; ( ( ... ) ( ... ) ( ... ) )
 (define (ctxf:eval-seq expr env transform canvas)
@@ -244,185 +320,3 @@
     ctxf:startshape/record?
   (name ctxf:startshape:name)
   (params ctxf:startshape:params))
-
-
-;;; Type for evaluated Logo procedures as defined to 'to statements.
-;;; These are stored in env.
-(define-record-type <logo:procedure>
-    (logo:procedure:new name argnames body)
-    logo:procedure?
-  (name     logo:procedure:name)
-  (argnames logo:procedure:argnames)
-  (body     logo:procedure:body))
-
-(define (logo:procedure-exists name env)
-  (and (eq? (environment-reference-type env name) 'normal)
-       (logo:procedure? (environment-lookup env name))))
-
-(define (logo:eval-call expr env canvas)
-  (let* ((name     (car expr))
-         (argexprs (cdr expr))
-         (argvals  (map (lambda (argexpr)
-                          (logo:eval-numexpr argexpr env canvas))
-                        argexprs)))
-    (case name
-      ((rotate rt)  (logo:builtin-rotate argvals canvas))
-      ((forward fd) (logo:builtin-forward argvals canvas))
-      (else
-        (if (logo:procedure-exists name env)
-          (logo:apply (environment-lookup env name)
-                      argvals env canvas)
-          (error 'call-unbound-logo-var name))))))
-
-;;; Apply a logo:procedure called within 'env.
-(define (logo:apply lproc argvals env canvas)
-  (let ((name     (logo:procedure:name lproc))
-        (argnames (logo:procedure:argnames lproc))
-        (body     (logo:procedure:body lproc)))
-    (if (not (= (length argnames) (length argvals)))
-      (error 'arity-mismatch name))
-    (let ((invocation-env (extend-top-level-environment
-                            env argnames argvals)))
-      (for-each (lambda (expr)
-                  (logo:eval expr invocation-env canvas))
-                body))))
-
-;;; repeat causes its body to be eval'd 'count times.
-(define (logo:eval-repeat expr env canvas)
-  (let ((count (cadr expr))
-        (stmts (cddr expr)))
-    (do-n-times count
-      (lambda _
-        (for-each (lambda (stmt)
-                    (logo:eval stmt env canvas))
-                  stmts)))))
-
-;;; Put a procedure definition in the environment.
-(define (logo:eval-to expr env canvas)
-  (let ((name     (caadr expr))
-        (argnames (cdadr expr))
-        (stmts    (cddr expr)))
-    (environment-define env name
-      (logo:procedure:new name argnames stmts))))
-
-;;; This is not installed in the generic evaluator, because numexprs are
-;;; not first-class citizens of the logo language.
-;;; They are only the arguments to call's.
-;;; We cheat here by using eval. This is a security vulnerability as arbitrary
-;;; code with side-effects could occur here.
-(define (logo:eval-numexpr expr env canvas)
-  (eval expr env))
-
-;;; Generic evaluator
-(define logo:eval
-  (make-generic-operator 3 'logo:eval))
-
-(defhandler logo:eval (lookup-later 'logo:eval-repeat) logo:repeat?)
-(defhandler logo:eval (lookup-later 'logo:eval-call)   logo:call?)
-(defhandler logo:eval (lookup-later 'logo:eval-to)     logo:to?)
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Logo Primitive Evaluators
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;; These operations cause events to 'happen' by mutating the canvas.
-
-(define (logo:builtin-rotate argvals canvas)
-  (if (not (= 1 (length argvals)))
-    (error 'arity-mismatch 'builtin-rotate))
-  (let ((angle (car argvals))
-        (turtle (logo:canvas:turtle canvas)))
-    (logo:turtle:rotate turtle angle)))
-
-(define (logo:builtin-forward argvals canvas)
-  (if (not (= 1 (length argvals)))
-    (error 'arity-mismatch 'builtin-forward))
-  (let* ((distance (car argvals))
-         (turtle (logo:canvas:turtle canvas))
-         (oldpos (logo:turtle:pos turtle)))
-    (logo:turtle:forward turtle distance)
-    (logo:canvas:add-line canvas
-      (list oldpos (logo:turtle:pos turtle)))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Example Logo Programs
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(define example-tosq
-  '(to (square size)
-     (repeat 4
-       (fd size)
-       (rt 90))))
-
-(define example-callsq
-  '(square 100))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Example Usage
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#| Example
-(define c (logo:canvas:new))
-(define e (logo:make-env))
-
-(logo:eval '(rotate 10) e c)
-(logo:eval '(fd 100) e c)
-(logo:eval '(repeat 4 (fd 100)) e c)
-(logo:eval '(repeat 4 (fd 100)) e c)
-(logo:eval '(to (revline) (rt 180) (fd 100)) e c)
-(logo:eval '(revline) e c)
-(logo:eval '(to (square size) (repeat 4 (fd size) (rt 90))) e c)
-(logo:eval '(square 50) e c)
-
-(pp (logo:canvas:turtle c))
-(pp c)
-(pp (environment-bindings e))
-|#
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Logo REPL
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;; Start an interactive logo repl
-;;; Terminate by entering "commit" or "(commit)"
-;;; Returns the canvas
-(define (logo:repl)
-  (let ((canvas (logo:canvas:new))
-        (env (logo:make-env)))
-    (define (loop)
-      (display "\nlogo> ")
-      (let ((input (read)))
-        (display "\n")
-        (display input)
-        (if (logo:repl-terminator? input)
-          canvas
-          (begin
-            (logo:eval input env canvas)
-            (loop)))))
-    (loop)))
-
-(define (logo:repl-terminator? input)
-  (or (equal? input 'commit)
-      (equal? input '(commit))))
-
-#| Usage Example
-(define result-canvas (logo:repl))
-;;; You should now see a "logo>" prompt.
-
-;;; Into REPL
-(to (square size)
-  (repeat 4
-    (fd size)
-    (rt 90)))
-(square 100)
-;;; (commit) terminates the repl and returns the canvas
-(commit)
-
-;;; Print the canvas, which contains 4 lines forming a square.
-(pp result-canvas)
-(pp (logo:canvas->uniform result-canvas))
-|#
