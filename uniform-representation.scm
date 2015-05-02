@@ -75,6 +75,8 @@ line = ('line x1 y1 x2 y2)
 (pp (ur-scale 1 1 u))
 (pp (ur-scale 2 2 u))
 (pp (ur-scale 2 2 (ur-translate -10 -10 u)))
+
+
 |#
 
 
@@ -104,7 +106,8 @@ line = ('line x1 y1 x2 y2)
       ((line) (zip-apply (list note-x note-y note-x note-y)
                          (cdr ele)))
       (else (error "ur-bounds does not recognize ur element" ele))))
-    ur)
+
+            ur)
   (list x-min y-min x-max y-max))
 
 #| Test Cases

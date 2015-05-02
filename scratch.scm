@@ -7,6 +7,8 @@
 (load "ghelper")
 (load "matcher")
 (load "helpers")
+(load "matrix")
+(load "transform")
 (load "uniform-representation")
 (load "logo")
 (load "draw")

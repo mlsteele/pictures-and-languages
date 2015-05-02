@@ -1,0 +1,6 @@
+(load "scratch")
+(hybrid-reset!)
+(rotate 10)
+(scale 0.7)
+(line! 0 0 1 1)
+(draw *ur*)
