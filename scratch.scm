@@ -4,16 +4,7 @@
 ;;; Loads
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(load "ghelper")
-(load "matcher")
-(load "helpers")
-(load "matrix")
-(load "transform")
-(load "uniform-representation")
-(load "logo")
-(load "draw")
-(load "svg")
-
+(load "load.scm")
 
 #| Example of Logo Usage
 ;;; Make a new canvas
