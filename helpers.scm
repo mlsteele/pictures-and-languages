@@ -70,6 +70,13 @@
 (define (for-each$ list f) (map f list))
 (define (map$ list f) (map f list))
 
+(define (line-length x1 y1 x2 y2)
+  (let* ((dx (- x2 x1))
+         (dy (- y2 y1))
+         (cc (+ (* dx dx) (* dy dy)))
+         (c (sqrt cc)))
+    c))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Generic pretty printer

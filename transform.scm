@@ -46,7 +46,6 @@
   (t:->:do t))
 
 (define (t:translate x y)
-  (pp `(translate ,x ,y))
   (%matrix:new `((1 0 ,x)
 		 (0 1 ,y)
 		 (0 0 1))))

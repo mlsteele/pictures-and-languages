@@ -17,8 +17,56 @@
 (hybrid-reset!)
 (scale 0.5 (lambda _
              (square 0.5)))
+(scale 0.5)
+(square 0.5)
 (draw *ur*)
 
+
+(hybrid-reset!)
+(mirror 45 (lambda _
+             (square 0.5)
+             (forward 0.5)
+             (scale 0.5)
+             (square 0.5)))
+(draw *ur*)
+
+
 (define (embedded-squares)
-  (scale 0.5)
-  (square))
+  (mirror 90 (lambda _
+    (square)
+    (translate -0.6 1)
+    (scale 0.4)
+    (guard embedded-squares))))
+(hybrid-reset!)
+(scale 0.1)
+(mirror 0 (lambda _
+  (mirror 90 (lambda _
+    (repeat 4 (lambda _
+      (embedded-squares)
+      (translate 2 0))))))
+(draw *ur*)
+
+
+(hybrid-reset!)
+(scale 0.3 (lambda _ (circle 1 100)))
+(draw *ur*)
+
+
+(define (tree)
+  (circle 1 100)
+  (define (fork)
+    (mirror 90 (lambda _
+                 (translate 1 3)
+                 (scale 0.9)
+                 (guard tree))))
+  (define (up-and-up)
+    (save-excursion (lambda _
+      (translate 0 3)
+      (scale 0.5)
+      (guard tree))))
+  (if (= 0 (random 3))
+    (fork)
+    (up-and-up)))
+(hybrid-reset!)
+(scale 0.1 tree)
+(draw *ur*)
