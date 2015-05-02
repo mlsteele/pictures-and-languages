@@ -1,5 +1,7 @@
 ;;; Interpreter for Context Free (CTXF) language
 
+(load "load")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF language
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46,25 +48,25 @@
   (name     ctxf:shape:name)
   (rules     ctxf:shape:rules))
 
-(define-record-type <ctxf:var>
-  (%ctxf:var:new name val)
-  ctxf:var?
-  (name ctxf:var:name)
-  (val  ctxf:var:val))
+(define-record-type <ctxf:const>
+  (%ctxf:const:new name val)
+  ctxf:const?
+  (name ctxf:const:name)
+  (val  ctxf:const:val))
 
-(define (ctxf:define-shape name body env)
-  (ctxf:define name (%ctxf:shape:new name body) env))
+(define (ctxf:define-shape name rules env)
+  (ctxf:define name (%ctxf:shape:new name rules) env))
 
-(define (ctxf:define-var name val env)
-  (ctxf:define name (%ctxf:var:new name val) env))
+(define (ctxf:define-const name val env)
+  (ctxf:define name (%ctxf:const:new name val) env))
 
 (define (ctxf:shape-exists? name env)
   (and (ctxf:exists? name env)
        (ctxf:shape? (environment-lookup env name))))
 
-(define (ctxf:var-exists? name env)
+(define (ctxf:const-exists? name env)
   (and (ctxf:exists? name env)
-       (ctxf:var? (environment-lookup env name))))
+       (ctxf:const? (environment-lookup env name))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Language Recognizers
@@ -111,7 +113,7 @@
 		(ctxf:shape? expr)
 		(ctxf:primitive? expr)
 		(ctxf:rule? expr)
-		(ctxf:assign-var? expr)))
+		(ctxf:assign-const? expr)))
        #t)) ; was (ctxf:shape-exists? (car expr) env)
 
 ;todo, will probably to matcher on (var = ...) somehow
@@ -163,7 +165,7 @@
 (define (ctxf:numexpr? expr env)
   (or (number? expr)
       (list? expr)
-      (ctxf:var-exists? expr env)))
+      (ctxf:const-exists? expr env)))
 
 ;; possible transforms:
 ;; x # translate by # in x
@@ -209,35 +211,35 @@
 ;; only let them assign a given shape once
 (define (ctxf:analyze:shape expr env)
   (let ((name (cadr expr))
-	(rules (if (> 2 (length epr))
+	(rules (if (> 2 (length expr))
 		    (caddr expr)
 		    '())))
     (if (ctxf:shape-exists? name env)
 	(error "Shape already exists--cannot redefine it!" name))
-    (ctxf:define-shape name (%ctxf:shape:new name rules))))
+    (ctxf:define-shape name rules env)))
 
 ;; we'll only let them assign a constant once
 (define (ctxf:analyze:const expr env)
   (let ((name (cadr expr))
 	(val (caddr expr)))
-    (ensure (not (ctxf:var-exists name env))
+    (ensure (not (ctxf:const-exists? name env))
 	    "Constants cannot be redefined!! Idiot")
-    (ctxf:define-var name val env)))
+    (ctxf:define-const name val env)))
 
 (define (ctxf/test input-lines)
   (assert (and (not (null? input-lines))
 	       (ctxf:startshape? (car input-lines))))
   (let ((env (ctxf:make-env)))
     (for-each (lambda (command)
-		(ctxf:analyze command env canvas))
+		(ctxf:analyze command env))
 	      input-lines)))
-#|
- (ctxf/test '(
+
+(ctxf/test '(
 	     (startshape X)
 	     (shape X)
 	     (shape Y)
 	     (const x 3)))
-|#
+
 ;;;;;;
 ;;;;;; eval
 ;;;;;;
@@ -281,7 +283,7 @@
 (define (ctxf:eval:shape-var expr env transform canvas)
   3)
 
-(define (ctxf:eval:assign-var expr env transform canvas)
+(define (ctxf:eval:assign-const expr env transform canvas)
   3)
 
 ;; ( ( ... ) ( ... ) ( ... ) )
