@@ -117,7 +117,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Logo Language Evaluators
+;;; CTXF Language Evaluators
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; For now, the user will have to write everything inside a (ctxf '( ... ))
@@ -128,7 +128,7 @@
 ;;;   ...))
 
 ;;; possible commands: startshape, shape, square, circle, triangle, rule,
-;;;                    <shapename>, <variablename>
+;;;                    <shapename>, (let/set/set!/=/define/assign)
 
 (define (ctxf input-lines)
   (assert (and (not (null? input-lines))
@@ -136,7 +136,8 @@
   (let ((env (ctxf:make-env)))
     (for-each (lambda (command)
 		(ctxf:eval command env canvas))
-	      input-lines)))
+	      input-lines)
+    (ctxf:execute (car input-lines) env)))
 
 (define ctxf:eval (make-generic-operator 3 'ctxf:eval))
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:startshape) ctxf:startshape?)
@@ -145,6 +146,22 @@
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:rule) ctxf:rule?)
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:shape-var) ctxf:shape-var?)
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:assign-var) ctxf:assign-var?)
+
+;; possible transforms:
+;; x # translate by # in x
+;; y # translate by # in y
+;; {t, translate, trans} # # translate in x and y
+;; {s, scale, size} # # scale in x and y, respectively
+;; {dr, drotate, drot} # rotate ccw by # degrees
+;; {rr, rrotate, rrot} # rotate ccw by # radians
+;; {flipx, fx} flip across x axis
+;; {flipy, fy} flip across y axis
+;; {dflip, df} # flip across line through center that's # degrees above horiz
+;; {rflip, rf} # flip across line through center that's # rads above horiz
+(define (ctxf:transform-unify t1 t2)
+  .. unify (i.e. typically multiply) transform matrices
+  )
+  
 
 ;; (startshape x)
 ;; (startshape x (r 3 s 4 ... ))
