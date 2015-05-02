@@ -8,24 +8,37 @@
 
 (define *ur* '())
 
-(define *transformation*)
+(define *transformation* (m:identity))
 
-(define (ur-reset!)
+(define (%transform x y)
+  (m:*v *transformation* (list x y)))
+
+(define (hybrid-reset!)
   (set! *ur* '())
-  (set! *transformation* ...))
+  (set! *transformation* (m:identity)))
 
 ;;; Draw a point.
 (define (point! #!optional x y)
   (if (any default-object? x y)
-    (point! 0 0))
+    (point! 0 0)
+    (begin
+      (error "not implemented")
   ... use transformation
   ... check if 1 is too small?
-  ... ur)
+  ... ur)))
 
 (define (line! x1 y1 x2 y2)
-  ... use transformation
-  ... check if too small
-  ... ur)
+  (let* ((p1 (%transform x1 y1))
+         (p2 (%transform x2 y2))
+         (x1 (car  p1))
+         (y1 (cadr p1))
+         (x2 (car  p2))
+         (y2 (cadr p2)))
+    (if ?? boom!)
+    (append! *ur* `(line ,x1 ,y1 ,x2 ,y2))))
+
+(define (color! color)
+  (append! *ur* `(color ,color)))
 
 (define (save-excursion thunk)
   (let ((transformation *transformation*))
