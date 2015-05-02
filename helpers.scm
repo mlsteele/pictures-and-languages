@@ -5,7 +5,10 @@
 (define pi (* 4 (atan 1.0)))
 
 (define (degrees->rads degrees)
-  (* 2 PI (/ degrees 360.)))
+  (* 2 pi (/ degrees 360)))
+
+(define (rads->degrees rads)
+  (* rads (/ 360 (* 2 pi))))
 
 (define (true? x) (eq? #t x))
 
