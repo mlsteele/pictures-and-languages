@@ -13,8 +13,8 @@
 
 (define *transformation* (m:identity))
 
-(define (*transformation*-premul! matrix)
-  (set! *transformation* (m:* matrix *transformation*)))
+(define (*transformation*-apply! matrix)
+  (set! *transformation* (m:* *transformation* matrix)))
 
 (define (%transform x y)
   (m:*v *transformation* (list x y)))
@@ -41,7 +41,6 @@
          (x2 (car  p2))
          (y2 (cadr p2)))
     ;; (if ?? boom!)
-    (pp (list x1 y1 x2 y2))
     (*ur*-add! `(line ,x1 ,y1 ,x2 ,y2))))
 
 (define (color! color)
@@ -53,13 +52,16 @@
     (set! *transformation* transformation)))
 
 (define (%translate dx dy)
-  ... do th heavy lifint...)
+  (*transformation*-apply! (t:translate dx dy)))
 
 (define (%rotate degrees)
-  ... do th heavy lifint...)
+  (*transformation*-apply! (t:rotate 'degrees degrees)))
 
 (define (%scale x y)
-  (*transformation*-premul! (t:scale x y)))
+  (*transformation*-apply! (t:scale x y)))
+
+(define (%flip degrees)
+  (*transformation*-apply! (t:flip 'degrees degrees)))
 
 (define (translate dx dy #!optional thunk)
   (if (default-object? thunk)
@@ -79,34 +81,46 @@
   (translate 0 dist thunk))
 
 (define (scale x #!optional y thunk)
-  (if (default-object? y)
-      (scale x x thunk)
-      (begin
-        (if (default-object? thunk)
-          (%scale x y)
-          (save-excursion (lambda _
-            (%scale x y)
-            (thunk)))))))
+  (pp (list x y thunk))
+  (cond
+   ((default-object? y)
+    (scale x x))
+   ((and (number? y) (default-object? thunk))
+    (%scale x y))
+   ((and (procedure? y) (default-object? thunk))
+    (scale x x y))
+   (else
+    (save-excursion (lambda _
+      (assert (number? y))
+      (%scale x y)
+      (thunk))))))
+
+(define (flip degrees #!optional thunk)
+  (if (default-object? thunk)
+    (%flip degrees)
+    (save-excursion (lambda _
+      (%flip degrees)
+      (thunk)))))
 
 ;;; Repeat a drawing task 'times.
 ;;; Each execution could change the transformation.
 ;;; Restore the transformation afterwards.
 (define (repeat times thunk)
   (save-excursion (lambda _
-    (let loop ((n times)))
+    (let loop ((n times))
       (if (> n 0)
         (begin
           (thunk)
-          (transformer)
-          (loop (- n 1)))))))
+          (loop (- n 1))))))))
 
 (define (mirror-x thunk)
   ...)
 
-(define (square size)
-  (repeat 4
-    (lambda _
-      (line 0 0 0 size)
-      (forward 100)
-      (rotate 90))))
+(define (square size #!optional size)
+  (if (default-object? size)
+    (square 1)
+    (repeat 4 (lambda _
+        (line! 0 0 0 size)
+        (forward size)
+        (rotate 90)))))
 
