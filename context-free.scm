@@ -148,7 +148,10 @@
 (defhandler ctxf:eval (lookup-later 'ctxf:eval:assign-var) ctxf:assign-var?)
 
 
-  
+(define (ctxf:numexpr? expr env)
+  (or (number? expr)
+      (list? expr)
+      (ctxf:var-exists? expr env)))
 ;; possible transforms:
 ;; x # translate by # in x
 ;; y # translate by # in y
