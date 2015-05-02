@@ -12,6 +12,8 @@ shape x {
     CIRCLE [ ... ]
 }
 
+phi = 4
+
 shape x2 {
     asdf
 }
