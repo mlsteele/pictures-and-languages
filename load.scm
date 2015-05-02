@@ -7,3 +7,4 @@
 (load "logo")
 (load "draw")
 (load "svg")
+(load "hybrid")

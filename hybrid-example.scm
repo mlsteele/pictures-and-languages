@@ -31,19 +31,18 @@
 (draw *ur*)
 
 
-(define (embedded-squares)
+(define (castle-walls)
   (mirror 90 (lambda _
     (square)
     (translate -0.6 1)
     (scale 0.4)
-    (guard embedded-squares))))
+    (guard castle-walls))))
 (hybrid-reset!)
 (scale 0.1)
-(mirror 0 (lambda _
-  (mirror 90 (lambda _
-    (repeat 4 (lambda _
-      (embedded-squares)
-      (translate 2 0))))))
+(mirror 90 (lambda _
+  (repeat 4 (lambda _
+    (castle-walls)
+    (translate 2 0)))))
 (draw *ur*)
 
 
