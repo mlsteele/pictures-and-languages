@@ -6,12 +6,22 @@
 ;;; - automatic recursion base case detection for self-similar shapes
 ;;; - relative positioning and mirroring
 
+;;; Active uniform representation of drawn stuf
 (define *ur* '())
+;;; Active transformation
+(define *transformation* (m:identity))
+;;; Continuation for when things get too small.
+(define *limit-k* (lambda _
+  (error "Draw limit reached at top level")))
+;;; Smallest visible feature.
+(define *limit-size* 0.005)
+
+(define (hybrid-reset!)
+  (set! *ur* '())
+  (set! *transformation* (m:identity)))
 
 (define (*ur*-add! ele)
   (set! *ur* (append *ur* (list ele))))
-
-(define *transformation* (m:identity))
 
 (define (*transformation*-apply! matrix)
   (set! *transformation* (m:* *transformation* matrix)))
@@ -19,19 +29,17 @@
 (define (%transform x y)
   (m:*v *transformation* (list x y)))
 
-(define (hybrid-reset!)
-  (set! *ur* '())
-  (set! *transformation* (m:identity)))
-
+#|
 ;;; Draw a point.
 (define (point! #!optional x y)
-  (if (any default-object? x y)
+ (if (any default-object? x y)
     (point! 0 0)
     (begin
       (error "not implemented")
   ... use transformation
   ... check if 1 is too small?
   ... ur)))
+|#
 
 (define (line! x1 y1 x2 y2)
   (let* ((p1 (%transform x1 y1))
@@ -40,8 +48,9 @@
          (y1 (cadr p1))
          (x2 (car  p2))
          (y2 (cadr p2)))
-    ;; (if ?? boom!)
-    (*ur*-add! `(line ,x1 ,y1 ,x2 ,y2))))
+    (if (< (line-length x1 y1 x2 y2) *limit-size*)
+      (*limit-k* 'limit-reached))
+      (*ur*-add! `(line ,x1 ,y1 ,x2 ,y2))))
 
 (define (color! color)
   (append! *ur* `(color ,color)))
@@ -81,7 +90,6 @@
   (translate 0 dist thunk))
 
 (define (scale x #!optional y thunk)
-  (pp (list x y thunk))
   (cond
    ((default-object? y)
     (scale x x))
@@ -113,10 +121,18 @@
           (thunk)
           (loop (- n 1))))))))
 
-(define (mirror-x thunk)
-  ...)
+;;; Use this to call a recursive function safely.
+(define (guard thunk)
+  (call-with-current-continuation (lambda (k)
+    (fluid-let ((*limit-k* k))
+      (thunk)))))
 
-(define (square size #!optional size)
+(define (mirror degrees thunk)
+  (save-excursion thunk)
+  (flip degrees (lambda _
+    (save-excursion thunk))))
+
+(define (square #!optional size)
   (if (default-object? size)
     (square 1)
     (repeat 4 (lambda _
@@ -124,3 +140,16 @@
         (forward size)
         (rotate 90)))))
 
+(define (%circle size resolution)
+  (repeat resolution (lambda _
+                       (rotate (/ 360 resolution))
+                       (save-excursion (lambda _
+                                         (translate 1 0)
+                                         (line! 0 0 0 1))))))
+
+(define (circle #!optional size resolution)
+  (if (default-object? resolution)
+      (circle size 16)
+      (if (default-object? size)
+          (circle 1 16)
+          (%circle size resolution))))
