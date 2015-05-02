@@ -44,4 +44,14 @@
       (m:* (t:->:do (list-tail li (+ num-args 1))) m)))
   (t:->:do t))
 
+(define (t:translate x y)
+  (%matrix:new '((1 0 x)
+		 (0 1 y)
+		 (0 0 1))))
+
+(define (t:scale sx sy)
+  (%matrix:new '((sx 0 0)
+		 (0 sy 0)
+		 (0 0 1))))
+
 
