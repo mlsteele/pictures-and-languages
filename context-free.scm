@@ -32,11 +32,15 @@
 (define (ctxf:define var e env)
   (environment-define env var e))
 
+(define (ctxf:lookup var env)
+  (environment-lookup env var))
+
 (define (ctxf:make-env)
     (make-top-level-environment))
 
 (define (ctxf:exists? name env)
-  (eq? (environment-reference-type env name) 'normal))
+  (and (eq? (environment-reference-type env name) 'normal)
+       (environment-bound? env name)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Shape/Variable Records
@@ -57,46 +61,55 @@
 (define (ctxf:define-shape name rules env)
   (ctxf:define name (%ctxf:shape:new name rules) env))
 
+(define (ctxf:define-startshape name transforms env)
+  (ctxf:define name (%ctxf:startshape:new name transforms) env))
+
 (define (ctxf:define-const name val env)
   (ctxf:define name (%ctxf:const:new name val) env))
 
 (define (ctxf:shape-exists? name env)
   (and (ctxf:exists? name env)
-       (ctxf:shape? (environment-lookup env name))))
+       (ctxf:shape? (ctxf:lookup env name))))
 
 (define (ctxf:const-exists? name env)
   (and (ctxf:exists? name env)
-       (ctxf:const? (environment-lookup env name))))
+       (ctxf:const? (ctxf:lookup env name))))
+
+(define (ctxf:already-defined? name env)
+  (and (ctxf:exists? name env)
+       (or (ctxf:shape? (ctxf:lookup name env))
+	   (ctxf:const? (ctxf:lookup name env)))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Language Recognizers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define (ctxf:startshape? expr)
+(define (ctxf:cmd/startshape? expr)
   (tagged-list? expr 'startshape))
 
-(define (ctxf:shape? expr)
+(define (ctxf:cmd/shape? expr)
   (tagged-list? expr 'shape))
 
-(define (ctxf:primitive? expr)
-  (or (ctx:primitive:square? expr)
-      (ctx:primitive:circle? expr) 
-      (ctx:primitive:triangle? expr)))
+(define (ctxf:cmd/primitive? expr)
+  (or (ctxf:cmd/primitive:square? expr)
+      (ctxf:cmd/primitive:circle? expr) 
+      (ctxf:cmd/primitive:triangle? expr)))
 
-(define (ctxf:primitive:square? expr)
+(define (ctxf:cmd/primitive:square? expr)
   (tagged-list? expr 'square))
 
-(define (ctxf:primitive:circle? expr)
+(define (ctxf:cmd/primitive:circle? expr)
   (tagged-list? expr 'circle))
 
-(define (ctxf:primitive:triangle? expr)
+(define (ctxf:cmd/primitive:triangle? expr)
   (tagged-list? expr 'triangle))
 
-(define (ctxf:rule? expr)
+(define (ctxf:cmd/rule? expr)
   (tagged-list? expr 'rule))
 
 ;; x = ...
-(define (ctxf:assign-const? expr)
+(define (ctxf:cmd/assign-const? expr)
   (or (tagged-list? expr 'let)
       (tagged-list? expr 'set)
       (tagged-list? expr 'set!)
@@ -108,12 +121,12 @@
 
 
 ;; shapename [ ... ]
-(define (ctxf:shape-var? expr env)
-  (and (not (or (ctxf:startshape? expr)
-		(ctxf:shape? expr)
-		(ctxf:primitive? expr)
-		(ctxf:rule? expr)
-		(ctxf:assign-const? expr)))
+(define (ctxf:cmd/shape-var? expr env)
+  (and (not (or (ctxf:cmd/startshape? expr)
+		(ctxf:cmd/shape? expr)
+		(ctxf:cmd/primitive? expr)
+		(ctxf:cmd/rule? expr)
+		(ctxf:cmd/assign-const? expr)))
        #t)) ; was (ctxf:shape-exists? (car expr) env)
 
 ;todo, will probably to matcher on (var = ...) somehow
@@ -137,7 +150,7 @@
 
 (define (ctxf input-lines)
   (assert (and (not (null? input-lines))
-	       (ctxf:startshape? (car input-lines))))
+	       (ctxf:cmd/startshape? (car input-lines))))
   (let ((env (ctxf:make-env)))
     (for-each (lambda (command)
 		(ctxf:analyze command env canvas))
@@ -146,21 +159,6 @@
 		(ctxf:eval command env canvas))
 	      input-lines)
     (ctxf:execute (car input-lines) env)))
-
-(define ctxf:eval (make-generic-operator 3 'ctxf:eval))
-(defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:startshape) ctxf:startshape?)
-(defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:shape) ctxf:shape?)
-(defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:primitive) ctxf:primitive?)
-(defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:rule) ctxf:rule?)
-(defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:shape-var) ctxf:shape-var?)
-(defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:assign-const) ctxf:assign-const?)
-
 
 (define (ctxf:numexpr? expr env)
   (or (number? expr)
@@ -185,11 +183,11 @@
 
 (define ctxf:analyze (make-generic-operator 2 'ctxf:analyze))
 (defhandler ctxf:analyze
-  (lookup-later 'ctxf:analyze:startshape) ctxf:startshape?)
+  (lookup-later 'ctxf:analyze:startshape) ctxf:cmd/startshape?)
 (defhandler ctxf:analyze
-  (lookup-later 'ctxf:analyze:shape) ctxf:shape?)
+  (lookup-later 'ctxf:analyze:shape) ctxf:cmd/shape?)
 (defhandler ctxf:analyze
-  (lookup-later 'ctxf:analyze:const) ctxf:assign-const?)
+  (lookup-later 'ctxf:analyze:const) ctxf:cmd/assign-const?)
 
 ;;;;;;
 ;;;;;; analysis
@@ -198,52 +196,72 @@
 
 ;; only let them have one startshape
 (define (ctxf:analyze:startshape expr env)
-  (let ((name (cadr expr))
+  (let ((name (symbol-append 'startshape// (cadr expr)))
 	(transforms (if (= 3 (length expr))
 			(caddr expr)
 			'())))
     (ensure (not (ctxf:exists? 'STARTSHAPE-EXISTS env))
-	    "A startshape was already created!")
+	    "Cannot have more than one startshape!")
     (ctxf:define 'STARTSHAPE-EXISTS #t env)
     (ctxf:define 'STARTSHAPE-NAME name env)
-    (ctxf:define-shape name transforms env)))
+    (ctxf:define-startshape name transforms env)))
 
 ;; only let them assign a given shape once
 (define (ctxf:analyze:shape expr env)
   (let ((name (cadr expr))
-	(rules (if (> 2 (length expr))
-		    (caddr expr)
+	(rules (if (> (length expr) 2)
+		    (cddr expr)
 		    '())))
-    (if (ctxf:shape-exists? name env)
-	(error "Shape already exists--cannot redefine it!" name))
+    (if (ctxf:already-defined? name env)
+	(error "An shape or constant with that name already
+                 exists--cannot redefine it!" name))
     (ctxf:define-shape name rules env)))
 
 ;; we'll only let them assign a constant once
 (define (ctxf:analyze:const expr env)
   (let ((name (cadr expr))
 	(val (caddr expr)))
-    (ensure (not (ctxf:const-exists? name env))
-	    "Constants cannot be redefined!! Idiot")
+    (if (ctxf:already-defined? name env)
+	(error "A shape or constant with that name already
+               exists--cannot redefine it!"))
     (ctxf:define-const name val env)))
 
-(define (ctxf/test input-lines)
+(define e #f)
+(define (ctxf/test/analyze input-lines)
   (assert (and (not (null? input-lines))
-	       (ctxf:startshape? (car input-lines))))
+	       (ctxf:cmd/startshape? (car input-lines))))
   (let ((env (ctxf:make-env)))
+    (set! e env)
     (for-each (lambda (command)
 		(ctxf:analyze command env))
 	      input-lines)))
-
+(define (lookup var) (environment-lookup e var))
 (ctxf/test '(
-	     (startshape X)
-	     (shape X)
-	     (shape Y)
-	     (const x 3)))
+	     (startshape X (p a r a m s))
+	     
+	     (shape X (a s d f) (g h i j))
+	     (shape Y (a b c d))
+	     (shape z )
+	     (const q 3)))
 
+;;;;;;
 ;;;;;;
 ;;;;;; eval
 ;;;;;;
 ;;;;;;
+(define ctxf:eval (make-generic-operator 4 'ctxf:eval))
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:startshape) ctxf:cmd/startshape?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:shape) ctxf:cmd/shape?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:primitive) ctxf:cmd/primitive?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:rule) ctxf:cmd/rule?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:shape-var) ctxf:cmd/shape-var?)
+(defhandler ctxf:eval
+  (lookup-later 'ctxf:eval:assign-const) ctxf:cmd/assign-const?)
 
 
 ;; (startshape x)
@@ -310,15 +328,8 @@
 		  (/ p s)))))
     weighted))
 	      
-
 (define-record-type <ctxf:startshape>
-  (%ctxf:startshape:new name params)
-    ctxf:startshape/record?
+  (%ctxf:startshape:new name transforms)
+    ctxf:startshape?
   (name ctxf:startshape:name)
-  (params ctxf:startshape:params))
-
-(define-record-type <ctxf:startshape>
-  (%ctxf:startshape:new name params)
-    ctxf:startshape/record?
-  (name ctxf:startshape:name)
-  (params ctxf:startshape:params))
+  (transforms ctxf:startshape:transforms))
