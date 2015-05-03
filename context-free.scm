@@ -127,7 +127,7 @@
 
 
 ;; shapename [ ... ]
-(define (ctxf:cmd/shape-var? expr env)
+(define (ctxf:cmd/shape-var? expr)
   (and (not (or (ctxf:cmd/startshape? expr)
 		(ctxf:cmd/shape? expr)
 		(ctxf:cmd/primitive? expr)
@@ -259,13 +259,9 @@
 (defhandler ctxf:eval
   (lookup-later 'ctxf:eval:startshape) ctxf:cmd/startshape?)
 (defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:shape) ctxf:cmd/shape?)
+  (lookup-later 'ctxf:eval:execute-shape) ctxf:cmd/shape-var?)
 (defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:primitive) ctxf:cmd/primitive?)
-(defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:rule) ctxf:cmd/rule?)
-(defhandler ctxf:eval
-  (lookup-later 'ctxf:eval:shape-var) ctxf:cmd/shape-var?)
+  (lookup-later 'ctxf:eval:execute-primitive) ctxf:cmd/primitive?)
 (defhandler ctxf:eval
   (lookup-later 'ctxf:eval:assign-const) ctxf:cmd/assign-const?)
 
@@ -325,7 +321,8 @@
 			   (ctxf:eval expr env transform canvas))))))))
 
 (define (ctxf:draw:primitive shape-name transform)
-  (pp '(drawing primitive shape ,shape-name ,(transform:stack transform))))
+  (pp `(drawing primitive shape ,shape-name
+		with stack transform: ,(transform:stack transform))))
 
 (define (ctxf:eval:execute-shape expr env transform canvas)
   (let* ((shape-name (car expr))
@@ -336,7 +333,10 @@
 		  (else
 		   (error "Call to execute shape, incorrect form!"))))
 	 (new-transform (transform:append transform t)))
-    (ctxf:draw shape-name new-transform)))
+    (ctxf:draw shape-name new-transform env canvas)))
+
+(define (ctxf:eval:execute-primitive expr env transform canvas)
+  (ctxf:eval:execute-shape expr env transform canvas))
 
 (define (ctxf:eval:assign-const expr env transform canvas)
   (ctxf:analyze:const expr env))
