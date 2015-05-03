@@ -65,7 +65,7 @@ color = color "red|green|blue|..."
       ((line) (cons 'line
                     (zip-apply (list tx ty tx ty)
                                (cdr ele))))
-      ((point) (cons 'point (zip-apply (list tx ty)) (cdr ele)))
+      ((point) (cons 'point (zip-apply (list tx ty) (cdr ele))))
       ((color) ele)
       (else (error "ur-scale does not recognize ur element" ele))))
     ur))

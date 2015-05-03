@@ -52,6 +52,10 @@
     (map (lambda (ele)
       (case (car ele)
         ((line) (apply svg:line (cdr ele)))
+        ;; color not implemented
+        ((color) "")
+        ;; point not implemented
+        ((point) "")
         (else (error "ur->svg does not recognize ur element" ele))))
       ur)))
 
