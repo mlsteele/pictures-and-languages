@@ -261,7 +261,7 @@
 (defhandler ctxf:eval
   (lookup-later 'ctxf:eval:assign-const) ctxf:cmd/assign-const?)
 
-(define (ctxf/test/eval input-lines)
+(define (ctxf input-lines)
   (assert (and (not (null? input-lines))
 	       (ctxf:cmd/startshape? (car input-lines))))
   (let ((env (ctxf:make-env)))
@@ -275,7 +275,9 @@
       (ctxf:eval (car input-lines)
 			    env
 			    identity-transform
-			    canvas))))
+			    canvas)
+      (draw (ctxf:canvas->uniform canvas))
+      'done)))
 
 ;; Checks if the transformation matrix is at the point where
 ;; shapes drawn can't really be seen by the human. We take
@@ -304,7 +306,7 @@
 	 (d1 (dist tbl tbr))
 	 (d2 (dist tbr ttr))
 	 (d3 (dist ttr tbl))
-	 (threshold 1e-6))
+	 (threshold 1e-3))
     (or (< d1 threshold)
 	(< d2 threshold)
 	(< d3 threshold))))
@@ -398,6 +400,8 @@
 			((1) (ctxf:rule->content (car rules-list)))
 			(else (ctxf:rule->content
 			       (ctxf:rules->pick-one rules-list))))))
+		(pp `(in draw: rules-list: ,rules-list
+			 rule: ,rule))
 		(if (eq? rule 'do-nothing)
 		    rule
 		    (for-each$
@@ -527,12 +531,18 @@
 (ctxf/test/eval '(
 		  (startshape foo)
 		  (shape foo
-			 (rule (square ()))
-			 (rule (circle ())))))
+			 (rule ((square ())))
+			 (rule ((circle ()))))))
 
+(ctxf '(
+		  (startshape random)
+		  (shape random
+			 (rule ((square ())
+				(random (dr -2 y 0.1 s 0.9 0.9))))
+			 (rule ((circle ())
+				(random (dr 2  y 0.1 s 0.9 0.9)))))))
 
-
-
+;(draw (ctxf:canvas->uniform c))
 
 
 
@@ -623,4 +633,4 @@
 (define (ctxf:circle)
   (/ 1 2))
 
-(draw (ctxf:canvas->uniform c))
+
