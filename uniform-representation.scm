@@ -40,6 +40,7 @@ color = color "red|green|blue|..."
       ((line) (cons 'line
                     (zip-apply (list tx ty tx ty)
                                (cdr ele))))
+      ((point) (cons 'point (zip-apply (list tx ty) (cdr ele))))
       ((color) ele)
       (else (error "ur-translate does not recognize ur element" ele))))
     ur))
@@ -64,6 +65,7 @@ color = color "red|green|blue|..."
       ((line) (cons 'line
                     (zip-apply (list tx ty tx ty)
                                (cdr ele))))
+      ((point) (cons 'point (zip-apply (list tx ty)) (cdr ele)))
       ((color) ele)
       (else (error "ur-scale does not recognize ur element" ele))))
     ur))
@@ -153,8 +155,8 @@ color = color "red|green|blue|..."
     (case (car ele)
       ((line) (zip-apply (list note-x note-y note-x note-y)
                          (cdr ele)))
-      ((color) 'nop)
       ((point) (zip-apply (list note-x note-y) (cdr ele)))
+      ((color) 'nop)
       (else (error "ur-bounds does not recognize ur element" ele)))))
   (receiver x-min y-min x-max y-max))
 
