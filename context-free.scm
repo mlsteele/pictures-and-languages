@@ -75,7 +75,7 @@
 
 (define (ctxf:const-exists? name env)
   (and (ctxf:exists? name env)
-       (ctxf:const? (ctxf:lookup env name))))
+       (ctxf:const? (ctxf:lookup name env))))
 
 (define (ctxf:already-defined? name env)
   (and (ctxf:exists? name env)
@@ -223,6 +223,7 @@
     (if (ctxf:already-defined? name env)
 	(error "A shape or constant with that name already
                exists--cannot redefine it!"))
+    (pp `(analyze-const: val= ,(eval val env)))
     (ctxf:define-const name val env)))
 
 (define e #f)
@@ -247,6 +248,8 @@
 ;;;;;; eval
 ;;;;;;
 ;;;;;;
+
+
 
 (define ctxf:eval (make-generic-operator 4 'ctxf:eval))
 (defhandler ctxf:eval
@@ -317,6 +320,55 @@
 	'nothing
 	(ctxf:draw name new-transform env canvas))))
 
+(define (ctxf:transform->simplify t env)
+  3)
+
+(define (ctxf:const->resolve const env)
+  (ensure (ctxf:const-exists? const env)
+	  "No constant with that name exists!")
+  (let ((expr (ctxf:lookup const env)))
+    (if (pair? expr)
+	(eval/c expr env)
+	(eval expr env)
+(define (eval/c val env)
+ ; (bkpt 'here)
+  (if (not (pair? val))
+      (let ((evald (eval val env)))
+	(if (ctxf:const? evald)
+	   ; (ctxf:const:val evald)
+	    (ctxf:const->resolve evald env)
+	    evald))
+      (let ((op (eval (car val) e))
+	    (args (cdr val)))
+	(let ((list-mapped-evald-args
+	       (map$ args (lambda (ele)
+			    (eval/c ele env)))))
+	  (apply op list-mapped-evald-args)))))
+
+
+(define (ctxf:eval:execute-shape expr env transform canvas)
+ ; (pp `(,expr / old-transform: ,(matrix:vals (transform:matrix transform))))
+  (let* ((shape-name (car expr))
+	 (t (cond ((= (length expr) 2)
+		   (cadr expr))
+		  ((= (length expr) 1)
+		   '())
+		  (else
+		   (error "Call to execute shape, incorrect form!"))))
+	 (new-transform (transform:append transform t)))
+  ; (pp `(,expr / new-transform: ,(matrix:vals (transform:matrix new-transform))))
+    (ctxf:draw shape-name new-transform env canvas)))
+
+(define (ctxf:eval:execute-primitive expr env transform canvas)
+  (ctxf:eval:execute-shape expr env transform canvas))
+
+(define (ctxf:eval:assign-const expr env transform canvas)
+  (ctxf:analyze:const expr env))
+
+;;;;;;;;;;;;;;;;;;;;
+;Drawing code, straight from eval -> draw -> canvas
+;;;;;;;;;;;;;;;;;;;;;;
+
 (define (ctxf:draw shape-name transform env canvas)
   (if (too-small? transform)
       'stop-drawing
@@ -342,7 +394,7 @@
 					       env
 					       transform
 					       canvas))))))))))
-(define (ctxf:do-nothing) (display "do-nothing\n") 3)
+
 (define (ctxf:draw:primitive shape-name transform canvas)
   (pp `(draw-primitive ,shape-name :
 	       ; ,(transform:stack transform) :
@@ -351,24 +403,10 @@
 			     `(,shape-name
 			       ,(transform:matrix transform))))
 
-(define (ctxf:eval:execute-shape expr env transform canvas)
- ; (pp `(,expr / old-transform: ,(matrix:vals (transform:matrix transform))))
-  (let* ((shape-name (car expr))
-	 (t (cond ((= (length expr) 2)
-		   (cadr expr))
-		  ((= (length expr) 1)
-		   '())
-		  (else
-		   (error "Call to execute shape, incorrect form!"))))
-	 (new-transform (transform:append transform t)))
-  ; (pp `(,expr / new-transform: ,(matrix:vals (transform:matrix new-transform))))
-    (ctxf:draw shape-name new-transform env canvas)))
 
-(define (ctxf:eval:execute-primitive expr env transform canvas)
-  (ctxf:eval:execute-shape expr env transform canvas))
-
-(define (ctxf:eval:assign-const expr env transform canvas)
-  (ctxf:analyze:const expr env))
+;;;;;;;;
+; rules
+;;;;;
 
 (define (ctxf:rule->content rule)
   (if (eq? (car rule) 'rule)
@@ -508,10 +546,16 @@
 (ctxf/test/eval '( (startshape x)
 		   (shape x (
 			     (circle (s 1.0 0.5))
-			    ; (x (y 1.01 s 0.99 0.99 dr -1))
 			     ))
 		   ))
 
+(ctxf/test/eval '( (startshape x)
+		   (let foo 0.5)
+		   (let goo foo)
+		   (shape x (
+			     (circle (s 1.0 foo))
+			     ))
+		   ))
 
 
 
