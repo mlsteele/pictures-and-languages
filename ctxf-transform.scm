@@ -1,3 +1,5 @@
+;;;; CTXF Transform record
+
 (define-record-type <transform>
   (%transform:new transforms-li matrix)
   transform?
@@ -16,7 +18,8 @@
 (define (transform:append transform t)
   (let ((transform-stack (append (transform:stack transform)
 				 (list t)))
-	(matrix (m:* (transform:matrix transform) (t:->matrix t))))
+	(matrix (m:* (transform:matrix transform)
+		     (transform:t->matrix t))))
     (%transform:new transform-stack matrix)))
 
 ;; creates a new identity transform, i.e. a fresh transform
@@ -24,9 +27,10 @@
 (define (transform:id)
   (%transform:new '() (m:identity)))
 
+
 ;; Given a transformation e.g. ( s 1 2 x 2 y 3 ... ), turns
 ;; it into a matrix in the natural basis
-(define (t:->matrix t)
+(define (transform:t->matrix t)
   (define (t:->:do li)
     (if (null? li)
 	(m:identity)
@@ -49,41 +53,3 @@
 		 ((t translate trans s scale size) 2))))
 	  (m:* (t:->:do (list-tail li (+ num-args 1))) m))))
   (t:->:do t))
-
-(define (t:translate x y)
-  (%matrix:new `((1 0 ,x)
-		 (0 1 ,y)
-		 (0 0 1))))
-
-(define (t:scale sx sy)
-  (%matrix:new `((,sx 0 0)
-		 (0 ,sy 0)
-		 (0 0 1))))
-
-(define (t:rotate units val)
-  (let ((theta (cond ((eq? units 'degrees)
-		      (degrees->rads val))
-		     ((eq? units 'radians)
-		      radians)
-		     (else
-		      (error "Units of incorrect type!" units)))))
-    (%matrix:new `((,(cos theta) ,(sin (- 0 theta)) 0)
-		   (,(sin theta) ,(cos theta) 0)
-		   (0 0 1)))))
-
-(define (t:flip units val)
-  (let* ((theta (cond ((eq? units 'degrees)
-		       (degrees->rads val))
-		      ((eq? units 'radians)
-		       radians)
-		      (else
-		       (error "Units of incorrect type!" units))))
-	 (lx (cos theta))
-	 (ly (sin theta))
-	 (a (- (* lx lx) (* ly ly))) ;; householder transform
-	 (b (* 2 lx ly))
-	 (c (* 2 lx ly))
-	 (d (- (* ly ly) (* lx lx))))
-    (%matrix:new `((,a ,b 0)
-		   (,c ,d 0)
-		   (0 0 1)))))

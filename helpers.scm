@@ -35,6 +35,8 @@
 (define (sum li)
   (fold-left + 0 li))
 
+(define (reset) (ge (make-top-level-environment)))
+
 ;;; Lookup a procedure when it is called.
 ;;; This defends against pass-by-value binding of procedures.
 ;;; This makes development easier, but a little more dangerous.
