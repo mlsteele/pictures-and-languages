@@ -3,10 +3,11 @@
 (load "load")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; CTXF language
+;;; CTXF Canvas
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; A CTXF canvas stores information about what shapes it has on it
+;;; A CTXF canvas stores information about all [primitive] shapes
+;;;  on it.
 (define-record-type <ctxf:canvas>
     (%ctxf:canvas:new shapes)
     ctxf:canvas?
@@ -19,89 +20,6 @@
   (ctxf:canvas:shapes! canvas
     (append (ctxf:canvas:shapes canvas)
 	    (list shape))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Transforming Canvas Shapes to UR
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; list of e.g.: (square ((1 0 0) (0 1 0) (0 0 1)))
-;; i.e. list of primitive shapes with their matrix transforms
-(define (ctxf:canvas->uniform canvas)
-  (define shapes (ctxf:canvas:shapes canvas))
-  (define (canvas->uniform:do ind)
-    (if (= ind (length shapes))
-	'()
-       	(append (canvas->uniform:do (+ ind 1))
-		(ctxf:shape->uniform (list-ref shapes ind)))))
-  (canvas->uniform:do 0))
-
-(define ctxf:shape->uniform
-  (make-generic-operator 1 'ctxf:shape->uniform))
-(defhandler ctxf:shape->uniform
-  (lookup-later 'ctxf:square->uniform) ctxf:cmd/primitive:square?)
-(defhandler ctxf:shape->uniform
-  (lookup-later 'ctxf:triangle->uniform) ctxf:cmd/primitive:triangle?)
-(defhandler ctxf:shape->uniform
-  (lookup-later 'ctxf:circle->uniform) ctxf:cmd/primitive:circle?)
-
-(define (ctxf:square->uniform s)
-  (let* ((coords (ctxf:square))
-	 (matrix (cadr s))
-	 (tl (m:*v matrix (car coords)))
-	 (tr (m:*v matrix (cadr coords)))
-	 (bl (m:*v matrix (caddr coords)))
-	 (br (m:*v matrix (cadddr coords))))
-    (list (list 'line (car tl) (cadr tl) (car tr) (cadr tr))
-	  (list 'line (car tr) (cadr tr) (car br) (cadr br))
-	  (list 'line (car br) (cadr br) (car bl) (cadr bl))
-	  (list 'line (car bl) (cadr bl) (car tl) (cadr tl)))))
-
-(define (ctxf:triangle->uniform s)
-  (let* ((coords (ctxf:triangle))
-	 (matrix (cadr s))
-	 (tp (m:*v matrix (car coords)))
-	 (br (m:*v matrix (cadr coords)))
-	 (bl (m:*v matrix (caddr coords))))
-    (list (list 'line (car tp) (cadr tp) (car br) (cadr br))
-	  (list 'line (car br) (cadr br) (car bl) (cadr bl))
-	  (list 'line (car bl) (cadr bl) (car tp) (cadr tp)))))
-
-(define (ctxf:circle->uniform s)
-  (let* ((r (ctxf:circle))
-	 (matrix (cadr s))
-	 (num-points 1000)
-	 (points (make-vector num-points)))
-    (let lp ((ind 0)
-	     (theta 0))
-      (if (= ind num-points)
-	  (vector->list points)
-	  (let* ((xy (list (/ (cos theta) 2) (/ (sin theta) 2)))
-		 (txy (m:*v matrix xy)))
-	    (vector-set! points ind
-			 (list 'point (car txy) (cadr txy)))
-	    (lp (+ ind 1) (* 2 pi (+ ind 1) (/ 1.0 num-points))))))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Primitive Shapes Key Points
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; cw starting top left, coords
-(define (ctxf:square)
-  (list (list (/ -1 2) (/ 1 2))
-	(list (/ 1 2) (/ 1 2))
-	(list (/ -1 2) (/ -1 2))
-	(list(/ 1 2) (/ -1 2))))
-
-;; cw starting top, coords
-(define (ctxf:triangle)
-  (list (list 0 (/ 1 (sqrt 3)))
-	(list (/ 1 2) (/ (sqrt 3) -6))
-	(list (/ -1 2) (/ (sqrt 3) -6))))
-
-;; radius of circle
-(define (ctxf:circle)
-  (/ 1 2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Definitions/Environment Sugar
@@ -121,7 +39,7 @@
        (environment-bound? env name)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; CTXF Shape/Variable Records
+;;; CTXF Shapes & Constants
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      
 (define-record-type <ctxf:startshape>
@@ -351,24 +269,19 @@
     (let ((identity-transform (transform:id))
 	  (canvas (ctxf:canvas:new)))
       (set! c canvas)
-      (ctxf:eval:startshape (car input-lines)
+      (ctxf:eval (car input-lines)
 			    env
 			    identity-transform
 			    canvas))))
-(ctxf/test '(
-	     (startshape X (p a r a m s))
-	     (shape X (a s d f) (g h i j))
-	     (shape Y (a b c d))
-	     (shape z )
-	     (const q 3)))
 
-;; checks if the transformation matrix is at the point where
+;; Checks if the transformation matrix is at the point where
 ;; shapes drawn can't really be seen by the human. We take
 ;; three test points, transform them, and if any of them are
 ;; too close together, we return true. The three test points
 ;; must be non-colinear. If they were colinear, it's possible
-;; that the transformation would not decrease in one dimension
-;; but would decrease in another one.
+;; that the transformation would infinitely descend to 0 in
+;; one dimension, yet we wouldn't catch it since we're looking
+;; in the wrong dimension.
 (define (too-small? transform)
   (define (dist p1 p2)
     (let* ((p1x (car p1))
@@ -590,4 +503,110 @@
 			     (x (y 1.01 s 0.99 0.99 dr -1))
 			     ))
 		   ))
+
+
+(ctxf/test/eval '( (startshape x)
+		   (shape x (
+			     (circle (s 1.0 0.5))
+			    ; (x (y 1.01 s 0.99 0.99 dr -1))
+			     ))
+		   ))
+
+
+
+
+
+
+
+
+
+
+
+
+;;;;;;
+;;;;
+;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Transforming Canvas Shapes to UR
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; list of e.g.: (square ((1 0 0) (0 1 0) (0 0 1)))
+;; i.e. list of primitive shapes with their matrix transforms
+(define (ctxf:canvas->uniform canvas)
+  (define shapes (ctxf:canvas:shapes canvas))
+  (define (canvas->uniform:do ind)
+    (if (= ind (length shapes))
+	'()
+       	(append (canvas->uniform:do (+ ind 1))
+		(ctxf:shape->uniform (list-ref shapes ind)))))
+  (canvas->uniform:do 0))
+
+(define ctxf:shape->uniform
+  (make-generic-operator 1 'ctxf:shape->uniform))
+(defhandler ctxf:shape->uniform
+  (lookup-later 'ctxf:square->uniform) ctxf:cmd/primitive:square?)
+(defhandler ctxf:shape->uniform
+  (lookup-later 'ctxf:triangle->uniform) ctxf:cmd/primitive:triangle?)
+(defhandler ctxf:shape->uniform
+  (lookup-later 'ctxf:circle->uniform) ctxf:cmd/primitive:circle?)
+
+(define (ctxf:square->uniform s)
+  (let* ((coords (ctxf:square))
+	 (matrix (cadr s))
+	 (tl (m:*v matrix (car coords)))
+	 (tr (m:*v matrix (cadr coords)))
+	 (bl (m:*v matrix (caddr coords)))
+	 (br (m:*v matrix (cadddr coords))))
+    (list (list 'line (car tl) (cadr tl) (car tr) (cadr tr))
+	  (list 'line (car tr) (cadr tr) (car br) (cadr br))
+	  (list 'line (car br) (cadr br) (car bl) (cadr bl))
+	  (list 'line (car bl) (cadr bl) (car tl) (cadr tl)))))
+
+(define (ctxf:triangle->uniform s)
+  (let* ((coords (ctxf:triangle))
+	 (matrix (cadr s))
+	 (tp (m:*v matrix (car coords)))
+	 (br (m:*v matrix (cadr coords)))
+	 (bl (m:*v matrix (caddr coords))))
+    (list (list 'line (car tp) (cadr tp) (car br) (cadr br))
+	  (list 'line (car br) (cadr br) (car bl) (cadr bl))
+	  (list 'line (car bl) (cadr bl) (car tp) (cadr tp)))))
+
+(define (ctxf:circle->uniform s)
+  (let* ((r (ctxf:circle))
+	 (matrix (cadr s))
+	 (num-points 1000)
+	 (points (make-vector num-points)))
+    (let lp ((ind 0)
+	     (theta 0))
+      (if (= ind num-points)
+	  (vector->list points)
+	  (let* ((xy (list (* (cos theta) r) (* (sin theta) r)))
+		 (txy (m:*v matrix xy)))
+	    (vector-set! points ind
+			 (list 'point (car txy) (cadr txy)))
+	    (lp (+ ind 1) (* 2 pi (+ ind 1) (/ 1.0 num-points))))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Primitive Shapes Key Points
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; cw starting top left, coords
+(define (ctxf:square)
+  (list (list (/ -1 2) (/ 1 2))
+	(list (/ 1 2) (/ 1 2))
+	(list (/ -1 2) (/ -1 2))
+	(list(/ 1 2) (/ -1 2))))
+
+;; cw starting top, coords
+(define (ctxf:triangle)
+  (list (list 0 (/ 1 (sqrt 3)))
+	(list (/ 1 2) (/ (sqrt 3) -6))
+	(list (/ -1 2) (/ (sqrt 3) -6))))
+
+;; radius of circle
+(define (ctxf:circle)
+  (/ 1 2))
+
 (draw (ctxf:canvas->uniform c))
