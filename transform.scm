@@ -13,11 +13,11 @@
 
 ;; like
 ;; (transform:append <transform-object> (r 1 s 2 ...))
-(define (transform:append t transformation)
-  (let ((transforms (append (transform:stack t)
-			    (list transformation)))
-	(matrix (t:->matrix transformation)))
-    (%transform:new transforms matrix)))
+(define (transform:append transform t)
+  (let ((transform-stack (append (transform:stack transform)
+				 (list t)))
+	(matrix (m:* (t:->matrix t) (transform:matrix transform))))
+    (%transform:new transform-stack matrix)))
 
 ;; creates a new identity transform, i.e. a fresh transform
 ;; with nothing on the stack and an identity matrix

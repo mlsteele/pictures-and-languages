@@ -10,20 +10,69 @@
 (define-record-type <ctxf:canvas>
     (%ctxf:canvas:new shapes)
     ctxf:canvas?
-  (shapes ctxf:canvas:shapes ctxf:canvas:set-shapes!))
+  (shapes ctxf:canvas:shapes ctxf:canvas:shapes!))
 
 (define (ctxf:canvas:new)
   (%ctxf:canvas:new '()))
 
 (define (ctxf:canvas:add-shape canvas shape)
-  (ctxf:canvas:set-shapes! canvas
-    (cons shape (ctxf:canvas:shapes canvas))))
+  (ctxf:canvas:shapes! canvas
+    (append (ctxf:canvas:shapes canvas)
+	    (list shape))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Transforming Canvas Shapes to UR
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; list of e.g.: (square ((1 0 0) (0 1 0) (0 0 1)))
+;; i.e. list of primitive shapes with their matrix transforms
 (define (ctxf:canvas->uniform canvas)
-  3
-  )
+  (for-each$
+   (ctxf:canvas:shapes canvas)
+   (lambda (s)
+     )))
+
+(define ctxf:shape->uniform
+  (make-generic-operator 1 'ctxf:shape->uniform))
+(defhandler ctxf:shape->uniform
+  (lookup-later 'ctxf:square->uniform) ctxf:cmd/primitive:square?)
+(defhandler ctxf:shape->uniform
+  (lookup-later 'ctxf:triangle->uniform) ctxf:cmd/primitive:triangle?)
+(defhandler ctxf:shape->uniform
+  (lookup-later 'ctxf:circle->uniform) ctxf:cmd/primitive:circle?)
+
+(define (ctxf:square->uniform s)
+  (let* ((coords (ctxf:square))
+	 (tl (car coords))
+	 (tr (cadr coords))
+	 (bl (caddr coords))
+	 (br (cadddr coords)))
+    (list (list 'line (car tl) (cadr tl) (car tr) (cadr tr))
+	  (list 'line (car tr) (cadr tr) (car br) (cadr br))
+	  (list 'line (car br) (cadr br) (car bl) (cadr bl))
+	  (list 'line (car bl) (cadr bl) (car tl) (cadr tl)))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Primitive Shapes Key Points
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; cw starting top left, coords
+(define (ctxf:square)
+  `(((/ -1 2) (/ 1 2))
+    ((/ 1 2) (/ 1 2))
+    ((/ -1 2) (/ -1 2))
+    ((/ 1 2) (/ -1 2))))
+
+;; cw starting top, coords
+(define (ctxf:triangle)
+  '((0 (/ 1 (sqrt 3)))
+    ((/ 1 2) (/ (sqrt 3) -6))
+    ((/ -1 2) (/ (sqrt 3) -6))))
+
+;; radius of circle
+(define (ctxf:circle)
+  (/ 1 2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Definitions/Environment Sugar
@@ -275,6 +324,7 @@
 	      input-lines)
     (let ((identity-transform (transform:id))
 	  (canvas (ctxf:canvas:new)))
+      (set! c canvas)
       (ctxf:eval:startshape (car input-lines)
 			    env
 			    identity-transform
@@ -302,7 +352,7 @@
 
 (define (ctxf:draw shape-name transform env canvas)
   (if (memq shape-name '(SQUARE TRIANGLE CIRCLE))
-      (ctxf:draw:primitive shape-name transform)
+      (ctxf:draw:primitive shape-name transform canvas)
       (begin
 	(ensure (ctxf:shape-exists? shape-name env)
 		"Can't draw a shape that doesn't exist!")
@@ -320,11 +370,16 @@
 			 (lambda (expr)
 			   (ctxf:eval expr env transform canvas))))))))
 
-(define (ctxf:draw:primitive shape-name transform)
-  (pp `(drawing primitive shape ,shape-name
-		with stack transform: ,(transform:stack transform))))
+(define (ctxf:draw:primitive shape-name transform canvas)
+  (pp `( ,shape-name :
+	        ,(transform:stack transform) :
+		,(matrix:vals (transform:matrix transform))))
+  (ctxf:canvas:add-shape canvas
+			 `(,shape-name
+			   ,(transform:matrix transform))))
 
 (define (ctxf:eval:execute-shape expr env transform canvas)
+  (pp `(,expr / old-transform: ,(matrix:vals (transform:matrix transform))))
   (let* ((shape-name (car expr))
 	 (t (cond ((= (length expr) 2)
 		   (cadr expr))
@@ -333,6 +388,7 @@
 		  (else
 		   (error "Call to execute shape, incorrect form!"))))
 	 (new-transform (transform:append transform t)))
+    (pp `(,expr / new-transform: ,(matrix:vals (transform:matrix new-transform))))
     (ctxf:draw shape-name new-transform env canvas)))
 
 (define (ctxf:eval:execute-primitive expr env transform canvas)
@@ -429,3 +485,17 @@
        (caddr rule)
        (cadr rule)))
 |#
+
+
+(define c #f)
+(ctxf/test/eval '( (startshape x)
+		   (shape x (
+			     (foo (x 3 y 4))
+			     (triangle ()) 
+			     (square ())
+			     (foo ())
+			     ))
+		   (shape foo (
+			       (circle (x 1 y 1))
+			       ))
+		   ))
