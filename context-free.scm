@@ -1,4 +1,13 @@
 ;;; Interpreter for Context Free (CTXF) language
+;;;
+;;; This is the interpreter for a modified version of the Context
+;;; Free Art language. If you desire more information, please visit
+;;; their website: http://www.contextfreeart.org
+;;;
+;;;  
+
+
+
 
 (load "load")
 
