@@ -77,6 +77,17 @@
          (c (sqrt cc)))
     c))
 
+(define (graphics-device-width d)
+  ((graphics-device-coordinate-limits d)
+   (lambda (x-left y-bottom x-right y-top)
+     (abs (- x-right x-left)))))
+
+(define (graphics-device-height d)
+  ((graphics-device-coordinate-limits d)
+   (lambda (x-left y-bottom x-right y-top)
+     (abs (- y-top y-bottom)))))
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Generic pretty printer
