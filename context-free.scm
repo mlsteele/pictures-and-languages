@@ -584,4 +584,10 @@
 			       ))
 		   ))
 
+(ctxf/test/eval '( (startshape x)
+		   (shape x (
+			     (square ())
+			     (x (y 1.01 s 0.99 0.99 dr -1))
+			     ))
+		   ))
 (draw (ctxf:canvas->uniform c))
