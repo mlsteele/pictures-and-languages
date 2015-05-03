@@ -388,11 +388,7 @@
 	 (d1 (dist tbl tbr))
 	 (d2 (dist tbr ttr))
 	 (d3 (dist ttr tbl))
-	 (threshold 1e-20))
-    (pp `(dists: ,d1 ,d2 ,d3))
-    (pp `(    ,(or (< d1 threshold)
-	(< d2 threshold)
-	(< d3 threshold))))
+	 (threshold 1e-6))
     (or (< d1 threshold)
 	(< d2 threshold)
 	(< d3 threshold))))
@@ -409,37 +405,38 @@
 	(ctxf:draw name new-transform env canvas))))
 
 (define (ctxf:draw shape-name transform env canvas)
-  (display "in draw\n")
-  (if (memq shape-name '(SQUARE TRIANGLE CIRCLE))
-      (begin (display "draw primitive\n")
-      (if (not (too-small? transform))
-	  (ctxf:draw:primitive shape-name transform canvas)
-	  (ctxf:do-nothing)))
+  (if (too-small? transform)
+      'stop-drawing
       (begin
-	(display "in here though I shouldn't be\n")
-	(ensure (ctxf:shape-exists? shape-name env)
-		"Can't draw a shape that doesn't exist!")
-	(let* ((shape-record (ctxf:lookup shape-name env))
-	       (rules-list (ctxf:shape:rules shape-record))
-	       (rule
-		(case (length rules-list)
-		  ((0) 'do-nothing)
-		  ((1) (ctxf:rule->content (car rules-list)))
-		  (else (ctxf:rule->content
-			 (ctxf:rules->pick-one rules-list))))))
-	  (if (eq? rule 'do-nothing)
-	      rule
-	      (for-each$ rule
-			 (lambda (expr)
-			   (ctxf:eval expr env transform canvas))))))))
+	(if (memq shape-name '(SQUARE TRIANGLE CIRCLE))
+	    (ctxf:draw:primitive shape-name transform canvas)
+	    (begin
+	      (ensure (ctxf:shape-exists? shape-name env)
+		      "Can't draw a shape that doesn't exist!")
+	      (let* ((shape-record (ctxf:lookup shape-name env))
+		     (rules-list (ctxf:shape:rules shape-record))
+		     (rule
+		      (case (length rules-list)
+			((0) 'do-nothing)
+			((1) (ctxf:rule->content (car rules-list)))
+			(else (ctxf:rule->content
+			       (ctxf:rules->pick-one rules-list))))))
+		(if (eq? rule 'do-nothing)
+		    rule
+		    (for-each$
+		     rule
+		     (lambda (expr) (ctxf:eval expr
+					       env
+					       transform
+					       canvas))))))))))
 (define (ctxf:do-nothing) (display "do-nothing\n") 3)
 (define (ctxf:draw:primitive shape-name transform canvas)
-  (pp `( ,shape-name :
+  (pp `(draw-primitive ,shape-name :
 	       ; ,(transform:stack transform) :
 		,(matrix:vals (transform:matrix transform))))
   (ctxf:canvas:add-shape canvas
-			 `(,shape-name
-			   ,(transform:matrix transform))))
+			     `(,shape-name
+			       ,(transform:matrix transform))))
 
 (define (ctxf:eval:execute-shape expr env transform canvas)
  ; (pp `(,expr / old-transform: ,(matrix:vals (transform:matrix transform))))
@@ -580,14 +577,11 @@
 (ctxf/test/eval '( (startshape x)
 		   (shape x (
 			     (square ())
-			     (x (s 0.1 0.1))
+			     (x (s 0.9 0.9))
 			     ))
 		   (shape foo (
 			       (triangle (y 0.2))
 			       ))
 		   ))
-(ctxf/test/eval '( (startshape x (s 1e-100 1e-100))
-		   (shape x (
-			     (square ())))))
-			 
+
 (draw (ctxf:canvas->uniform c))
