@@ -19,6 +19,11 @@
 	(matrix (t:->matrix transformation)))
     (%transform:new transforms matrix)))
 
+;; creates a new identity transform, i.e. a fresh transform
+;; with nothing on the stack and an identity matrix
+(define (transform:id)
+  (%transform:new '() (m:identity)))
+
 ;; Given a transformation e.g. ( s 1 2 x 2 y 3 ... ), turns
 ;; it into a matrix in the natural basis
 (define (t:->matrix t)

@@ -75,7 +75,7 @@
 
 (define (ctxf:shape-exists? name env)
   (and (ctxf:exists? name env)
-       (ctxf:shape? (ctxf:lookup env name))))
+       (ctxf:shape? (ctxf:lookup name env))))
 
 (define (ctxf:const-exists? name env)
   (and (ctxf:exists? name env)
@@ -242,9 +242,8 @@
 		(ctxf:analyze command env))
 	      input-lines)))
 (define (lookup var) (environment-lookup e var))
-(ctxf/test '(
+(ctxf/test/analyze '(
 	     (startshape X (p a r a m s))
-	     
 	     (shape X (a s d f) (g h i j))
 	     (shape Y (a b c d))
 	     (shape z )
@@ -255,6 +254,7 @@
 ;;;;;; eval
 ;;;;;;
 ;;;;;;
+
 (define ctxf:eval (make-generic-operator 4 'ctxf:eval))
 (defhandler ctxf:eval
   (lookup-later 'ctxf:eval:startshape) ctxf:cmd/startshape?)
@@ -269,6 +269,30 @@
 (defhandler ctxf:eval
   (lookup-later 'ctxf:eval:assign-const) ctxf:cmd/assign-const?)
 
+(define (ctxf/test/eval input-lines)
+  (assert (and (not (null? input-lines))
+	       (ctxf:cmd/startshape? (car input-lines))))
+  (let ((env (ctxf:make-env)))
+    (set! e env)
+    (for-each (lambda (command)
+		(ctxf:analyze command env))
+	      input-lines)
+    (let ((identity-transform (transform:id))
+	  (canvas (ctxf:canvas:new)))
+      (ctxf:eval:startshape (car input-lines)
+			    env
+			    identity-transform
+			    canvas))))
+(ctxf/test '(
+	     (startshape X (p a r a m s))
+	     (shape X (a s d f) (g h i j))
+	     (shape Y (a b c d))
+	     (shape z )
+	     (const q 3)))
+
+(define (too-small? transform)
+  #f)
+
 (define (ctxf:eval:startshape expr env transform canvas)
   (let* ((name (cadr expr))
 	 (tl (ctxf:startshape:transforms
@@ -278,9 +302,9 @@
 	 (new-transform (transform:append transform tl)))
     (if (too-small? transform)
 	'nothing
-	(ctxf:draw name new-transform env))))
+	(ctxf:draw name new-transform env canvas))))
 
-(define (ctxf:draw shape-name transform env)
+(define (ctxf:draw shape-name transform env canvas)
   (if (memq shape-name '(SQUARE TRIANGLE CIRCLE))
       (ctxf:draw:primitive shape-name transform)
       (begin
@@ -299,6 +323,23 @@
 	      (for-each$ rule
 			 (lambda (expr)
 			   (ctxf:eval expr env transform canvas))))))))
+
+(define (ctxf:draw:primitive shape-name transform)
+  (pp '(drawing primitive shape ,shape-name ,(transform:stack transform))))
+
+(define (ctxf:eval:execute-shape expr env transform canvas)
+  (let* ((shape-name (car expr))
+	 (t (cond ((= (length expr) 2)
+		   (cadr expr))
+		  ((= (length expr) 1)
+		   '())
+		  (else
+		   (error "Call to execute shape, incorrect form!"))))
+	 (new-transform (transform:append transform t)))
+    (ctxf:draw shape-name new-transform)))
+
+(define (ctxf:eval:assign-const expr env transform canvas)
+  (ctxf:analyze:const expr env))
 
 (define (ctxf:rule->content rule)
   (if (eq? (car rule) 'rule)
@@ -321,43 +362,6 @@
 	  (if (< r (sum (list-head ps (+ ind 1))))
 	      (list-ref rules ind)
 	      (lp (+ ind 1)))))))
-
-;; (shape x ( (...) (...) ... )
-;; (shape x (rule ( ... )) (rule ( ... )) ... )
-(define (ctxf:eval:shape expr env transform canvas)
-  (if (> (length expr) 3) ;; so we have rules
-      (let ((ps (ctxf:rule-probabilities (cddr expr)))
-	    (r (random 1.0)))
-	(let lp ((ind 0))
-	  (if (= ind (- (length ps) 1))
-	      (ctxf:eval-seq (rule:get-seq (last expr)))
-	      (if (< r (sum (list-head ps (+ ind 1))))
-		  (ctxf:eval-seq (rule:get-seq
-				  (list-ref expr (+ ind 2)))) 
-		  (lp (+ ind 1))))))
-      (ctxf:eval-seq (caddr expr))))
-
-(define (ctxf:eval:primitive expr env transform canvas)
-  (if (= (length expr) 1)
-      (ctxf:draw-primitive (car expr) transform)
-      (let* ((t (cadr expr))
-	     (new-t (ctxf:transform-unify transform t)))
-	(ctxf:draw-primitive (car expr) new-t))))
-
-;; (rule ( .... ) )
-(define (ctxf:eval:rule expr env transform canvas)
-  (ctxf:eval-seq (rule:get-seq expr) env transform canvas))
-
-(define (ctxf:eval:shape-var expr env transform canvas)
-  3)
-
-(define (ctxf:eval:assign-const expr env transform canvas)
-  3)
-
-;; ( ( ... ) ( ... ) ( ... ) )
-(define (ctxf:eval-seq expr env transform canvas)
-  (pp `(evaluating sequence ,expr)))
-
 
 ;; ( (rule ( ... )) (rule 0.3 ( ... )) )
 (define (ctxf:rule-probabilities list-of-rules)
