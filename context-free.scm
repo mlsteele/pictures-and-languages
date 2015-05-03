@@ -300,6 +300,28 @@
 			 (lambda (expr)
 			   (ctxf:eval expr env transform canvas))))))))
 
+(define (ctxf:rule->content rule)
+  (if (eq? (car rule) 'rule)
+      (cond ((and (= (length rule) 2)
+		  (pair? (cadr rule)))
+	     (cadr rule))
+	    ((and (= (length rule) 3)
+		  (number? (cadr rule)))
+	     (caddr rule))
+	    (else
+	     (error "Rule is not in the correct format!")))
+      rule))
+
+(define (ctxf:rules->pick-one rules)
+  (let ((ps (ctxf:rule-probabilities rules))
+	(r (random 1.0)))
+    (let lp ((ind 0))
+      (if (= ind (- (length ps) 1))
+	  (last rules)
+	  (if (< r (sum (list-head ps (+ ind 1))))
+	      (list-ref rules ind)
+	      (lp (+ ind 1)))))))
+
 ;; (shape x ( (...) (...) ... )
 ;; (shape x (rule ( ... )) (rule ( ... )) ... )
 (define (ctxf:eval:shape expr env transform canvas)
