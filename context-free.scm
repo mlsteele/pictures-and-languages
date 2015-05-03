@@ -260,9 +260,6 @@
 ;; {flipy, fy} flip across y axis
 ;; {dflip, df} # flip across line through center that's # degrees above horiz
 ;; {rflip, rf} # flip across line through center that's # rads above horiz
-(define (ctxf:transform-unify matrix t2)
-  .. unify (i.e. typically multiply) transform matrices
-  )
 
 
 (define ctxf:analyze (make-generic-operator 2 'ctxf:analyze))
@@ -526,6 +523,19 @@
 			     ))
 		   (shape foo (
 			       (circle (x 0.1 y 0.1))
+			       ))
+		   ))
+
+(ctxf/test/eval '( (startshape x)
+		   (shape x (
+			     (circle (s 0.01 0.01))
+			     (triangle ())
+			     (triangle (y 0.2))
+			     (square ())
+			     (foo (dr 90))
+			     ))
+		   (shape foo (
+			       (triangle (y 0.2))
 			       ))
 		   ))
 

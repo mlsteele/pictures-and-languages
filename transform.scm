@@ -16,7 +16,7 @@
 (define (transform:append transform t)
   (let ((transform-stack (append (transform:stack transform)
 				 (list t)))
-	(matrix (m:* (t:->matrix t) (transform:matrix transform))))
+	(matrix (m:* (transform:matrix transform) (t:->matrix t))))
     (%transform:new transform-stack matrix)))
 
 ;; creates a new identity transform, i.e. a fresh transform
