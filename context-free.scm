@@ -324,13 +324,30 @@
   3)
 
 (define (ctxf:const->resolve const env)
+  (pp `(const-resolve: const = ,const))
   (ensure (ctxf:const-exists? const env)
 	  "No constant with that name exists!")
   (let ((expr (ctxf:lookup const env)))
-    (if (pair? expr)
-	(eval/c expr env)
-	(eval expr env)
+   ; (if (pair? expr)
+	(eval/c expr env)))
+;	(eval expr env)
 (define (eval/c val env)
+ ; (bkpt 'here)
+  (if (pair? val)
+      (let* ((op (eval (car val) e))
+	     (args (cdr val))
+	     (list-mapped-evald-args (map (lambda (ele)
+					    (eval/c ele env))
+					  args)))
+	  (apply op list-mapped-evald-args))
+      (let ((evald (eval val env)))
+	(if (ctxf:const? evald)
+	    ; (ctxf:const:val evald)
+	    (eval/c (ctxf:const:val evald) env)
+	    evald))))
+      
+#|
+ (define (eval/c val env)
  ; (bkpt 'here)
   (if (not (pair? val))
       (let ((evald (eval val env)))
@@ -344,7 +361,7 @@
 	       (map$ args (lambda (ele)
 			    (eval/c ele env)))))
 	  (apply op list-mapped-evald-args)))))
-
+|#
 
 (define (ctxf:eval:execute-shape expr env transform canvas)
  ; (pp `(,expr / old-transform: ,(matrix:vals (transform:matrix transform))))
