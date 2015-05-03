@@ -14,8 +14,9 @@ Each command's car indicates what it is.
 So far only the 'line command type is supported.
 
 UR = (feature*)
-feature = line
+feature = line | color
 line = ('line x1 y1 x2 y2)
+color = color "red|green|blue|..."
 |#
 
 #| Examples
@@ -31,7 +32,7 @@ line = ('line x1 y1 x2 y2)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Translate a UR by (dx dy)
-(define (ur-translate dx dy ur)
+(define (ur-translate ur dx dy)
   (define (tx x) (+ x dx))
   (define (ty x) (+ x dy))
   (map (lambda (ele)
@@ -48,14 +49,14 @@ line = ('line x1 y1 x2 y2)
   '((line 0 0 10 100)
     (line 10 100 100 100)
     (line 100 100 10 0)))
-(pp (ur-translate 5 5 u))
-(pp (ur-translate -10 -10 u))
+(pp (ur-translate u 5 5))
+(pp (ur-translate u -10 -10))
 |#
 
 ;;; Scale a UR by sx in x
 ;;;           and sy in y
 ;;; Scale relative to the origin.
-(define (ur-scale sx sy ur)
+(define (ur-scale ur sx sy)
   (define (tx x) (* x sx))
   (define (ty x) (* x sy))
   (map (lambda (ele)
@@ -72,11 +73,58 @@ line = ('line x1 y1 x2 y2)
   '((line 0 0 10 100)
     (line 10 100 100 100)
     (line 100 100 10 0)))
-(pp (ur-scale 1 1 u))
-(pp (ur-scale 2 2 u))
-(pp (ur-scale 2 2 (ur-translate -10 -10 u)))
+(pp (ur-scale u 1 1))
+(pp (ur-scale u 2 2))
+(pp (ur-scale (ur-translate u -10 -10) 2 2))
+|#
 
+;;; Rescale from 1:1 width:height to ratio.
+(define (ur-aspect-ratio ur ratio)
+  (ur-scale ur 1 ratio))
 
+(define (ur-fit-for-draw ur width height)
+  (let* ((ur ur)
+         ;; put corner at (0,0)
+         (ur (ur-zero-corner ur))
+         ;; fit into box of (0,0) to (width, height)
+         (ur (ur-fit-box ur width height))
+         ;; move from pixel to device coordinates
+         (ur (ur-scale ur (/ 2 width) (/ 2 height)))
+         (ur (ur-translate ur -1 -1))
+         ;; add some padding
+         (ur (ur-scale ur .8 .8))
+         (ur (ur-translate ur .05 .05)))
+    ur))
+
+;;; Take any ur and put its lower left corner at (0,0)
+(define (ur-zero-corner ur)
+  (ur-bounds ur (lambda (x-min y-min x-max y-max)
+    (ur-translate ur (- x-min) (- y-min)))))
+
+;;; Take a zero-cornered ur and fit it into a unit box.
+(define (ur-unit-scale ur)
+  (ur-bounds ur (lambda (x-min y-min x-max y-max)
+    (let* ((max-dim (max x-max y-max))
+           (factor (/ 1 max-dim)))
+      (ur-scale ur factor factor)))))
+
+;;; Take a zero-cornered ur and fit it into a width:height box.
+(define (ur-fit-box ur width height)
+  (ur-bounds ur (lambda (x-min y-min x-max y-max)
+    (let* ((aspect-ur  (/ x-max y-max))
+           (aspect-box (/ width height))
+           (factor (if (> aspect-ur aspect-box)
+                       (/ width x-max)
+                       (/ height y-max))))
+      (ur-scale ur factor factor)))))
+
+#| Test Cases
+(begin
+  (hybrid-reset!)
+  (square 100)
+  (translate -10 10)
+  (square 80)
+  (draw *ur*))
 |#
 
 
@@ -85,10 +133,10 @@ line = ('line x1 y1 x2 y2)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Get the bounds of a UR.
-;;; Returns a list of (x-min y-min x-max y-max)
+;;; Calls receiver on (x-min y-min x-max y-max)
 ;;; Note that this uses +/-1e100 as maximum detectable
 ;;; because I'm lazy and couldn't find an infinity value.
-(define (ur-bounds ur)
+(define (ur-bounds ur receiver)
   (ensure (> (length ur) 0)
           "Can only get bounds of non-empty UR.")
   (define x-min 1e100)
@@ -101,20 +149,19 @@ line = ('line x1 y1 x2 y2)
   (define (note-y y)
     (and (< y y-min) (set! y-min y))
     (and (> y y-max) (set! y-max y)))
-  (for-each (lambda (ele)
+  (for-each$ ur (lambda (ele)
     (case (car ele)
       ((line) (zip-apply (list note-x note-y note-x note-y)
                          (cdr ele)))
-      (else (error "ur-bounds does not recognize ur element" ele))))
-
-            ur)
-  (list x-min y-min x-max y-max))
+      ((color) 'nop)
+      (else (error "ur-bounds does not recognize ur element" ele)))))
+  (receiver x-min y-min x-max y-max))
 
 #| Test Cases
 (define u
   '((line 10 5 100 300)
     (line 5 10 200 100)))
-(pp (ur-bounds u)) ; (5 5 200 300)
+(pp (ur-bounds u list)) ; (5 5 200 300)
 |#
 
 

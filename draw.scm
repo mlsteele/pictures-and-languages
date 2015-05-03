@@ -26,7 +26,11 @@
 
 (define (draw ur)
   (draw:start-graphics!)
-  (for-each (lambda (ele) (draw:do device ele)) ur))
+  (let* ((width (graphics-device-width device))
+         (height (graphics-device-height device))
+         (ur (ur-fit-for-draw ur width height)))
+    (for-each (lambda (ele)
+      (draw:do device ele)) ur)))
 
 (define test-ur '((line 0 0 1 1)
 		  (line -1 -1 1/2 1/2)
@@ -49,7 +53,7 @@
   (let ((x (draw:point:get 'x expr))
 	(y (draw:point:get 'y expr)))
     (graphics-draw-point d x y)))
-  
+
 (define (draw:line d expr)
   (assert (draw:line? expr))
   (assert d)
