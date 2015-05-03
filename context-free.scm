@@ -362,8 +362,40 @@
 	     (shape z )
 	     (const q 3)))
 
+;; checks if the transformation matrix is at the point where
+;; shapes drawn can't really be seen by the human. We take
+;; three test points, transform them, and if any of them are
+;; too close together, we return true. The three test points
+;; must be non-colinear. If they were colinear, it's possible
+;; that the transformation would not decrease in one dimension
+;; but would decrease in another one.
 (define (too-small? transform)
-  #f)
+  (define (dist p1 p2)
+    (let* ((p1x (car p1))
+	   (p1y (cadr p1))
+	   (p2x (car p2))
+	   (p2y (cadr p2))
+	   (d (sqrt (+ (expt (- p1x p2x) 2)
+		       (expt (- p1y p2y) 2)))))
+      d))
+  (let* ((matrix (transform:matrix transform))
+	 (bl (list 0 -1))
+	 (br (list 0 0))
+	 (tr (list 1 0))
+	 (tbl (m:*v matrix bl))
+	 (tbr (m:*v matrix br))
+	 (ttr (m:*v matrix tr))
+	 (d1 (dist tbl tbr))
+	 (d2 (dist tbr ttr))
+	 (d3 (dist ttr tbl))
+	 (threshold 1e-20))
+    (pp `(dists: ,d1 ,d2 ,d3))
+    (pp `(    ,(or (< d1 threshold)
+	(< d2 threshold)
+	(< d3 threshold))))
+    (or (< d1 threshold)
+	(< d2 threshold)
+	(< d3 threshold))))
 
 (define (ctxf:eval:startshape expr env transform canvas)
   (let* ((name (cadr expr))
@@ -378,7 +410,9 @@
 
 (define (ctxf:draw shape-name transform env canvas)
   (if (memq shape-name '(SQUARE TRIANGLE CIRCLE))
-      (ctxf:draw:primitive shape-name transform canvas)
+      (if (not (too-small? transform))
+	  (ctxf:draw:primitive shape-name transform canvas)
+	  (ctxf:do-nothing))
       (begin
 	(ensure (ctxf:shape-exists? shape-name env)
 		"Can't draw a shape that doesn't exist!")
@@ -395,17 +429,17 @@
 	      (for-each$ rule
 			 (lambda (expr)
 			   (ctxf:eval expr env transform canvas))))))))
-
+(define (ctxf:do-nothing) (display "do-nothing") 3)
 (define (ctxf:draw:primitive shape-name transform canvas)
   (pp `( ,shape-name :
-	        ,(transform:stack transform) :
+	       ; ,(transform:stack transform) :
 		,(matrix:vals (transform:matrix transform))))
   (ctxf:canvas:add-shape canvas
 			 `(,shape-name
 			   ,(transform:matrix transform))))
 
 (define (ctxf:eval:execute-shape expr env transform canvas)
-  (pp `(,expr / old-transform: ,(matrix:vals (transform:matrix transform))))
+ ; (pp `(,expr / old-transform: ,(matrix:vals (transform:matrix transform))))
   (let* ((shape-name (car expr))
 	 (t (cond ((= (length expr) 2)
 		   (cadr expr))
@@ -414,7 +448,7 @@
 		  (else
 		   (error "Call to execute shape, incorrect form!"))))
 	 (new-transform (transform:append transform t)))
-    (pp `(,expr / new-transform: ,(matrix:vals (transform:matrix new-transform))))
+  ; (pp `(,expr / new-transform: ,(matrix:vals (transform:matrix new-transform))))
     (ctxf:draw shape-name new-transform env canvas)))
 
 (define (ctxf:eval:execute-primitive expr env transform canvas)
@@ -533,6 +567,17 @@
 			     (triangle (y 0.2))
 			     (square ())
 			     (foo (dr 90))
+			     ))
+		   (shape foo (
+			       (triangle (y 0.2))
+			       ))
+		   ))
+
+
+(ctxf/test/eval '( (startshape x)
+		   (shape x (
+			     (square ())
+			     (x (s 0.1 0.1))
 			     ))
 		   (shape foo (
 			       (triangle (y 0.2))
