@@ -22,7 +22,7 @@
 	    (list shape))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; CTXF Definitions/Environment Sugar
+;;; CTXF Environment Sugar
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (ctxf:define var e env)
@@ -82,7 +82,6 @@
        (or (ctxf:shape? (ctxf:lookup name env))
 	   (ctxf:const? (ctxf:lookup name env)))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Language Recognizers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -110,7 +109,6 @@
 (define (ctxf:cmd/rule? expr)
   (tagged-list? expr 'rule))
 
-;; x = ...
 (define (ctxf:cmd/assign-const? expr)
   (or (tagged-list? expr 'let)
       (tagged-list? expr 'set)
@@ -121,64 +119,17 @@
       (tagged-list? expr 'const)
       (tagged-list? expr 'constant)))
 
-
-;; shapename [ ... ]
 (define (ctxf:cmd/shape-var? expr)
   (and (not (or (ctxf:cmd/startshape? expr)
 		(ctxf:cmd/shape? expr)
 		(ctxf:cmd/primitive? expr)
 		(ctxf:cmd/rule? expr)
 		(ctxf:cmd/assign-const? expr)))
-       #t)) ; was (ctxf:shape-exists? (car expr) env)
-
-;todo, will probably to matcher on (var = ...) somehow
-;; also need to make sure that top level commands are only startshape, shape,
-;; and rule. no primitives, no shape-var, no assign-var.
-
+       #t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; CTXF Language Evaluators
+;;; CTXF Language Analyzer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;; For now, the user will have to write everything inside a (ctxf '( ... ))
-;;; function, e.g.
-;;; (ctxf '(
-;;;   (startshape S)
-;;;   ...
-;;;   ...))
-
-;;; possible commands: startshape, shape, square, circle, triangle, rule,
-;;;                    <shapename>, (let/set/set!/=/define/assign)
-
-(define (ctxf input-lines)
-  (assert (and (not (null? input-lines))
-	       (ctxf:cmd/startshape? (car input-lines))))
-  (let ((env (ctxf:make-env)))
-    (for-each (lambda (command)
-		(ctxf:analyze command env canvas))
-	      input-lines)
-    (for-each (lambda (command)
-		(ctxf:eval command env canvas))
-	      input-lines)
-    (ctxf:execute (car input-lines) env)))
-
-(define (ctxf:numexpr? expr env)
-  (or (number? expr)
-      (list? expr)
-      (ctxf:const-exists? expr env)))
-
-;; possible transforms:
-;; x # translate by # in x
-;; y # translate by # in y
-;; {t, translate, trans} # # translate in x and y
-;; {s, scale, size} # # scale in x and y, respectively
-;; {dr, drotate, drot} # rotate ccw by # degrees
-;; {rr, rrotate, rrot} # rotate ccw by # radians
-;; {flipx, fx} flip across x axis
-;; {flipy, fy} flip across y axis
-;; {dflip, df} # flip across line through center that's # degrees above horiz
-;; {rflip, rf} # flip across line through center that's # rads above horiz
-
 
 (define ctxf:analyze (make-generic-operator 2 'ctxf:analyze))
 (defhandler ctxf:analyze
@@ -188,10 +139,6 @@
 (defhandler ctxf:analyze
   (lookup-later 'ctxf:analyze:const) ctxf:cmd/assign-const?)
 
-;;;;;;
-;;;;;; analysis
-;;;;;;
-;;;;;;
 
 ;; only let them have one startshape
 (define (ctxf:analyze:startshape expr env)
@@ -226,30 +173,10 @@
     (pp `(analyze-const: val= ,(eval val env)))
     (ctxf:define-const name val env)))
 
-(define e #f)
-(define (ctxf/test/analyze input-lines)
-  (assert (and (not (null? input-lines))
-	       (ctxf:cmd/startshape? (car input-lines))))
-  (let ((env (ctxf:make-env)))
-    (set! e env)
-    (for-each (lambda (command)
-		(ctxf:analyze command env))
-	      input-lines)))
-(define (lookup var) (environment-lookup e var))
-(ctxf/test/analyze '(
-	     (startshape X (p a r a m s))
-	     (shape X (a s d f) (g h i j))
-	     (shape Y (a b c d))
-	     (shape z )
-	     (const q 3)))
 
-;;;;;;
-;;;;;;
-;;;;;; eval
-;;;;;;
-;;;;;;
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; CTXF Language Evaluator
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define ctxf:eval (make-generic-operator 4 'ctxf:eval))
 (defhandler ctxf:eval
@@ -261,23 +188,6 @@
 (defhandler ctxf:eval
   (lookup-later 'ctxf:eval:assign-const) ctxf:cmd/assign-const?)
 
-(define (ctxf input-lines)
-  (assert (and (not (null? input-lines))
-	       (ctxf:cmd/startshape? (car input-lines))))
-  (let ((env (ctxf:make-env)))
-    (set! e env)
-    (for-each (lambda (command)
-		(ctxf:analyze command env))
-	      input-lines)
-    (let ((identity-transform (transform:id))
-	  (canvas (ctxf:canvas:new)))
-      (set! c canvas)
-      (ctxf:eval (car input-lines)
-			    env
-			    identity-transform
-			    canvas)
-      (draw (ctxf:canvas->uniform canvas))
-      'done)))
 
 ;; Checks if the transformation matrix is at the point where
 ;; shapes drawn can't really be seen by the human. We take
@@ -343,7 +253,8 @@
 (define (ctxf:eval:assign-const expr env transform canvas)
   (ctxf:analyze:const expr env))
 
-
+;;; Takes a transformation list and resolves all of the constants
+;;;  referenced within.
 (define (ctxf:t->resolve-consts t env)
   (define t-evald (list-copy t))
   (let lp ((ind 0))
@@ -364,10 +275,11 @@
 		   (ctxf:const->resolve (list-ref t j) env))
 		  (lp-eval (+ j 1)))))))))
 
+;; Fully resolves a constant defined in the environment
 (define (ctxf:const->resolve const env)
   (define (eval/c val env)
     (if (pair? val)
-	(let* ((op (eval (car val) e))
+	(let* ((op (eval (car val) env))
 	       (args (cdr val))
 	       (list-mapped-evald-args (map (lambda (ele)
 					      (eval/c ele env))
@@ -379,9 +291,9 @@
 	      evald))))
   (eval/c const env))
 
-;;;;;;;;;;;;;;;;;;;;
-;Drawing code, straight from eval -> draw -> canvas
-;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; CTXF Drawing to Canvas
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (ctxf:draw shape-name transform env canvas)
   (if (too-small? transform)
@@ -420,10 +332,12 @@
 			       ,(transform:matrix transform))))
 
 
-;;;;;;;;
-; rules
-;;;;;
 
+;;; Takes a rule and extracts its content. Can take any of:
+;;; (rule ( ... ))
+;;; (rule <num> ( ... ))
+;;; ( ... )
+;;; the result will be the content, i.e. ( ... )
 (define (ctxf:rule->content rule)
   (if (eq? (car rule) 'rule)
       (cond ((and (= (length rule) 2)
@@ -436,6 +350,8 @@
 	     (error "Rule is not in the correct format!")))
       rule))
 
+;;; Given a list of rules with possibly-supplied probabilities,
+;;; picks one based on the probabilities.
 (define (ctxf:rules->pick-one rules)
   (let ((ps (ctxf:rule-probabilities rules))
 	(r (random 1.0)))
@@ -446,7 +362,12 @@
 	      (list-ref rules ind)
 	      (lp (+ ind 1)))))))
 
-;; ( (rule ( ... )) (rule 0.3 ( ... )) )
+;;; Given a list of rules with possibly-supplied probabilities,
+;;; returns a list of weighted probabilities corresponding to
+;;; each of the rules.
+;;; Example: calling this method on
+;;; ((rule (...)) (rule 0.5 (...)) (rule 1.5 (...)))
+;;; would yield (0.3333 0.16666 0.5)
 (define (ctxf:rule-probabilities list-of-rules)
   (let* ((unweighted
 	  (map$ list-of-rules
@@ -461,97 +382,8 @@
 		  (/ p s)))))
     weighted))
 
-
-
-
-
-
-
-(define c #f)
-(ctxf/test/eval '( (startshape x)
-		   (shape x (
-			     ;(foo (x 3 y 4))
-			     ;(triangle ()) 
-			     ;(square ())
-			     (foo ())
-			     ))
-		   (shape foo (
-			       (circle (x 0.1 y 0.1))
-			       ))
-		   ))
-
-(ctxf/test/eval '( (startshape x)
-		   (shape x (
-			     (circle (s 0.01 0.01))
-			     (triangle ())
-			     (triangle (y 0.2))
-			     (square ())
-			     (foo (dr 90))
-			     ))
-		   (shape foo (
-			       (triangle (y 0.2))
-			       ))
-		   ))
-
-
-(ctxf/test/eval '( (startshape x)
-		   (shape x (
-			     (square ())
-			     (x (s 0.9 0.9))
-			     ))
-		   (shape foo (
-			       (triangle (y 0.2))
-			       ))
-		   ))
-
-(ctxf/test/eval '( (startshape x)
-		   (shape x (
-			     (square ())
-			     (x (y 1.01 s 0.99 0.99 dr -1))
-			     ))
-		   ))
-
-
-(ctxf/test/eval '( (startshape x)
-		   (shape x (
-			     (circle (s 1.0 0.5))
-			     ))
-		   ))
-
-(ctxf/test/eval '( (startshape x)
-		   (let foo 0.5)
-		   (let goo foo)
-		   (shape x (
-			     (circle (s 1.0 foo))
-			     (square (s goo 1))
-			     ))
-		   ))
-
-
-(ctxf/test/eval '(
-		  (startshape foo)
-		  (shape foo
-			 (rule ((square ())))
-			 (rule ((circle ()))))))
-
-(ctxf '(
-		  (startshape random)
-		  (shape random
-			 (rule ((square ())
-				(random (dr -2 y 0.1 s 0.9 0.9))))
-			 (rule ((circle ())
-				(random (dr 2  y 0.1 s 0.9 0.9)))))))
-
-;(draw (ctxf:canvas->uniform c))
-
-
-
-
-;;;;;;
-;;;;
-;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Transforming Canvas Shapes to UR
+;;; CTXF Transforming Canvas Shapes to UR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; list of e.g.: (square ((1 0 0) (0 1 0) (0 0 1)))
@@ -611,9 +443,8 @@
 			 (list 'point (car txy) (cadr txy)))
 	    (lp (+ ind 1) (* 2 pi (+ ind 1) (/ 1.0 num-points))))))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Primitive Shapes Key Points
+;;; Primitive Shapes: Key Points
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; cw starting top left, coords
@@ -633,4 +464,124 @@
 (define (ctxf:circle)
   (/ 1 2))
 
+
+
+
+
+;;; For now, the user will have to write everything inside a (ctxf '( ... ))
+;;; function, e.g.
+;;; (ctxf '(
+;;;   (startshape S)
+;;;   ...
+;;;   ...))
+
+;;; possible commands: startshape, shape, square, circle, triangle, rule,
+;;;                    <shapename>, (let/set/set!/=/define/assign)
+
+
+;; possible transforms:
+;; x # translate by # in x
+;; y # translate by # in y
+;; {t, translate, trans} # # translate in x and y
+;; {s, scale, size} # # scale in x and y, respectively
+;; {dr, drotate, drot} # rotate ccw by # degrees
+;; {rr, rrotate, rrot} # rotate ccw by # radians
+;; {flipx, fx} flip across x axis
+;; {flipy, fy} flip across y axis
+;; {dflip, df} # flip across line through center that's # degrees above horiz
+;; {rflip, rf} # flip across line through center that's # rads above horiz
+
+(define (ctxf input-lines)
+  (assert (and (not (null? input-lines))
+	       (ctxf:cmd/startshape? (car input-lines))))
+  (let ((env (ctxf:make-env)))
+    (for-each (lambda (command)
+		(ctxf:analyze command env))
+	      input-lines)
+    (let ((identity-transform (transform:id))
+	  (canvas (ctxf:canvas:new)))
+      (ctxf:eval (car input-lines)
+			    env
+			    identity-transform
+			    canvas)
+      (draw (ctxf:canvas->uniform canvas))
+      'done)))
+
+(ctxf '(
+		  (startshape random)
+		  (shape random
+			 (rule ((square ())
+				(random (dr -2 y 0.1 s 0.9 0.9))))
+			 (rule ((circle ())
+				(random (dr 2  y 0.1 s 0.9 0.9)))))))
+
+
+#|
+
+ (ctxf/test/eval '( (startshape x)
+		    (shape x (
+			      ;(foo (x 3 y 4))
+			      ;(triangle ()) 
+			      ;(square ())
+			      (foo ())
+			      ))
+		    (shape foo (
+				(circle (x 0.1 y 0.1))
+				))
+		    ))
+
+ (ctxf/test/eval '( (startshape x)
+		    (shape x (
+			      (circle (s 0.01 0.01))
+			      (triangle ())
+			      (triangle (y 0.2))
+			      (square ())
+			      (foo (dr 90))
+			      ))
+		    (shape foo (
+				(triangle (y 0.2))
+				))
+		    ))
+
+
+ (ctxf/test/eval '( (startshape x)
+		    (shape x (
+			      (square ())
+			      (x (s 0.9 0.9))
+			      ))
+		    (shape foo (
+				(triangle (y 0.2))
+				))
+		    ))
+
+ (ctxf/test/eval '( (startshape x)
+		    (shape x (
+			      (square ())
+			      (x (y 1.01 s 0.99 0.99 dr -1))
+			      ))
+		    ))
+
+
+ (ctxf/test/eval '( (startshape x)
+		    (shape x (
+			      (circle (s 1.0 0.5))
+			      ))
+		    ))
+
+ (ctxf/test/eval '( (startshape x)
+		    (let foo 0.5)
+		    (let goo foo)
+		    (shape x (
+			      (circle (s 1.0 foo))
+			      (square (s goo 1))
+			      ))
+		    ))
+
+
+ (ctxf/test/eval '(
+		   (startshape foo)
+		   (shape foo
+			  (rule ((square ())))
+			  (rule ((circle ()))))))
+|#
 
