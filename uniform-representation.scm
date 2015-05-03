@@ -154,6 +154,7 @@ color = color "red|green|blue|..."
       ((line) (zip-apply (list note-x note-y note-x note-y)
                          (cdr ele)))
       ((color) 'nop)
+      ((point) (zip-apply (list note-x note-y) (cdr ele)))
       (else (error "ur-bounds does not recognize ur element" ele)))))
   (receiver x-min y-min x-max y-max))
 
