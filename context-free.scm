@@ -45,6 +45,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Shape/Variable Records
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      
+(define-record-type <ctxf:startshape>
+  (%ctxf:startshape:new name transforms)
+    ctxf:startshape?
+  (name ctxf:startshape:name)
+  (transforms ctxf:startshape:transforms))
 
 (define-record-type <ctxf:shape>
   (%ctxf:shape:new name rules)
@@ -263,14 +269,36 @@
 (defhandler ctxf:eval
   (lookup-later 'ctxf:eval:assign-const) ctxf:cmd/assign-const?)
 
-
-;; (startshape x)
-;; (startshape x (r 3 s 4 ... ))
 (define (ctxf:eval:startshape expr env transform canvas)
   (let* ((name (cadr expr))
-	(this-transform (if (= 3 (length expr)) (caddr expr) '()))
-	(new-transform (ctxf:transform-unify transform this-transform)))
-    (ctxf:draw name new-transform)))
+	 (tl (ctxf:startshape:transforms
+	      (ctxf:lookup
+	       (ctxf:lookup 'STARTSHAPE-NAME env)
+	       env)))
+	 (new-transform (transform:append transform tl)))
+    (if (too-small? transform)
+	'nothing
+	(ctxf:draw name new-transform env))))
+
+(define (ctxf:draw shape-name transform env)
+  (if (memq shape-name '(SQUARE TRIANGLE CIRCLE))
+      (ctxf:draw:primitive shape-name transform)
+      (begin
+	(ensure (ctxf:shape-exists? shape-name env)
+		"Can't draw a shape that doesn't exist!")
+	(let* ((shape-record (ctxf:lookup shape-name env))
+	       (rules-list (ctxf:shape:rules shape-record))
+	       (rule
+		(case (length rules-list)
+		  ((0) 'do-nothing)
+		  ((1) (ctxf:rule->content (car rules-list)))
+		  (else (ctxf:rule->content
+			 (ctxf:rules->pick-one rules-list))))))
+	  (if (eq? rule 'do-nothing)
+	      rule
+	      (for-each$ rule
+			 (lambda (expr)
+			   (ctxf:eval expr env transform canvas))))))))
 
 ;; (shape x ( (...) (...) ... )
 ;; (shape x (rule ( ... )) (rule ( ... )) ... )
@@ -308,10 +336,6 @@
 (define (ctxf:eval-seq expr env transform canvas)
   (pp `(evaluating sequence ,expr)))
 
-(define (rule:get-seq rule)
-  (if (= (length rule) 3)
-      (caddr rule)
-      (cadr rule)))
 
 ;; ( (rule ( ... )) (rule 0.3 ( ... )) )
 (define (ctxf:rule-probabilities list-of-rules)
@@ -327,9 +351,55 @@
 		(lambda (p)
 		  (/ p s)))))
     weighted))
-	      
-(define-record-type <ctxf:startshape>
-  (%ctxf:startshape:new name transforms)
-    ctxf:startshape?
-  (name ctxf:startshape:name)
-  (transforms ctxf:startshape:transforms))
+
+
+#|
+ ;; (startshape x)
+ ;; (startshape x (r 3 s 4 ... ))
+ (define (ctxf:eval:startshape expr env transform canvas)
+   (let* ((name (cadr expr))
+	 (this-transform (if (= 3 (length expr)) (caddr expr) '()))
+	 (new-transform (ctxf:transform-unify transform this-transform)))
+     (ctxf:draw name new-transform)))
+
+ ;; (shape x ( (...) (...) ... )
+ ;; (shape x (rule ( ... )) (rule ( ... )) ... )
+ (define (ctxf:eval:shape expr env transform canvas)
+   (if (> (length expr) 3) ;; so we have rules
+       (let ((ps (ctxf:rule-probabilities (cddr expr)))
+	     (r (random 1.0)))
+	 (let lp ((ind 0))
+	   (if (= ind (- (length ps) 1))
+	       (ctxf:eval-seq (rule:get-seq (last expr)))
+	       (if (< r (sum (list-head ps (+ ind 1))))
+		   (ctxf:eval-seq (rule:get-seq
+				   (list-ref expr (+ ind 2)))) 
+		   (lp (+ ind 1))))))
+       (ctxf:eval-seq (caddr expr))))
+
+ (define (ctxf:eval:primitive expr env transform canvas)
+   (if (= (length expr) 1)
+       (ctxf:draw-primitive (car expr) transform)
+       (let* ((t (cadr expr))
+	      (new-t (ctxf:transform-unify transform t)))
+	 (ctxf:draw-primitive (car expr) new-t))))
+
+ ;; (rule ( .... ) )
+ (define (ctxf:eval:rule expr env transform canvas)
+   (ctxf:eval-seq (rule:get-seq expr) env transform canvas))
+
+ (define (ctxf:eval:shape-var expr env transform canvas)
+   3)
+
+ (define (ctxf:eval:assign-const expr env transform canvas)
+   3)
+
+ ;; ( ( ... ) ( ... ) ( ... ) )
+ (define (ctxf:eval-seq expr env transform canvas)
+   (pp `(evaluating sequence ,expr)))
+
+ (define (rule:get-seq rule)
+   (if (= (length rule) 3)
+       (caddr rule)
+       (cadr rule)))
+|#
