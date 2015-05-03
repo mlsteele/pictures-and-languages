@@ -409,11 +409,14 @@
 	(ctxf:draw name new-transform env canvas))))
 
 (define (ctxf:draw shape-name transform env canvas)
+  (display "in draw\n")
   (if (memq shape-name '(SQUARE TRIANGLE CIRCLE))
+      (begin (display "draw primitive\n")
       (if (not (too-small? transform))
 	  (ctxf:draw:primitive shape-name transform canvas)
-	  (ctxf:do-nothing))
+	  (ctxf:do-nothing)))
       (begin
+	(display "in here though I shouldn't be\n")
 	(ensure (ctxf:shape-exists? shape-name env)
 		"Can't draw a shape that doesn't exist!")
 	(let* ((shape-record (ctxf:lookup shape-name env))
@@ -429,7 +432,7 @@
 	      (for-each$ rule
 			 (lambda (expr)
 			   (ctxf:eval expr env transform canvas))))))))
-(define (ctxf:do-nothing) (display "do-nothing") 3)
+(define (ctxf:do-nothing) (display "do-nothing\n") 3)
 (define (ctxf:draw:primitive shape-name transform canvas)
   (pp `( ,shape-name :
 	       ; ,(transform:stack transform) :
@@ -583,5 +586,8 @@
 			       (triangle (y 0.2))
 			       ))
 		   ))
-
+(ctxf/test/eval '( (startshape x (s 1e-100 1e-100))
+		   (shape x (
+			     (square ())))))
+			 
 (draw (ctxf:canvas->uniform c))
