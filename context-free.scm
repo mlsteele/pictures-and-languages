@@ -27,10 +27,13 @@
 ;; list of e.g.: (square ((1 0 0) (0 1 0) (0 0 1)))
 ;; i.e. list of primitive shapes with their matrix transforms
 (define (ctxf:canvas->uniform canvas)
-  (for-each$
-   (ctxf:canvas:shapes canvas)
-   (lambda (s)
-     )))
+  (define shapes (ctxf:canvas:shapes canvas))
+  (define (canvas->uniform:do ind)
+    (if (= ind (length shapes))
+	'()
+       	(append (canvas->uniform:do (+ ind 1))
+		(ctxf:shape->uniform (list-ref shapes ind)))))
+  (canvas->uniform:do 0))
 
 (define ctxf:shape->uniform
   (make-generic-operator 1 'ctxf:shape->uniform))
@@ -43,14 +46,40 @@
 
 (define (ctxf:square->uniform s)
   (let* ((coords (ctxf:square))
-	 (tl (car coords))
-	 (tr (cadr coords))
-	 (bl (caddr coords))
-	 (br (cadddr coords)))
+	 (matrix (cadr s))
+	 (tl (m:*v matrix (car coords)))
+	 (tr (m:*v matrix (cadr coords)))
+	 (bl (m:*v matrix (caddr coords)))
+	 (br (m:*v matrix (cadddr coords))))
     (list (list 'line (car tl) (cadr tl) (car tr) (cadr tr))
 	  (list 'line (car tr) (cadr tr) (car br) (cadr br))
 	  (list 'line (car br) (cadr br) (car bl) (cadr bl))
 	  (list 'line (car bl) (cadr bl) (car tl) (cadr tl)))))
+
+(define (ctxf:triangle->uniform s)
+  (let* ((coords (ctxf:triangle))
+	 (matrix (cadr s))
+	 (tp (m:*v matrix (car coords)))
+	 (br (m:*v matrix (cadr coords)))
+	 (bl (m:*v matrix (caddr coords))))
+    (list (list 'line (car tp) (cadr tp) (car br) (cadr br))
+	  (list 'line (car br) (cadr br) (car bl) (cadr bl))
+	  (list 'line (car bl) (cadr bl) (car tp) (cadr tp)))))
+
+(define (ctxf:circle->uniform s)
+  (let* ((r (ctxf:circle))
+	 (matrix (cadr s))
+	 (num-points 1000)
+	 (points (make-vector num-points)))
+    (let lp ((ind 0)
+	     (theta 0))
+      (if (= ind num-points)
+	  (vector->list points)
+	  (let* ((xy (list (/ (cos theta) 2) (/ (sin theta) 2)))
+		 (txy (m:*v matrix xy)))
+	    (vector-set! points ind
+			 (list 'point (car txy) (cadr txy)))
+	    (lp (+ ind 1) (* 2 pi (+ ind 1) (/ 1.0 num-points))))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -59,16 +88,16 @@
 
 ;; cw starting top left, coords
 (define (ctxf:square)
-  `(((/ -1 2) (/ 1 2))
-    ((/ 1 2) (/ 1 2))
-    ((/ -1 2) (/ -1 2))
-    ((/ 1 2) (/ -1 2))))
+  (list (list (/ -1 2) (/ 1 2))
+	(list (/ 1 2) (/ 1 2))
+	(list (/ -1 2) (/ -1 2))
+	(list(/ 1 2) (/ -1 2))))
 
 ;; cw starting top, coords
 (define (ctxf:triangle)
-  '((0 (/ 1 (sqrt 3)))
-    ((/ 1 2) (/ (sqrt 3) -6))
-    ((/ -1 2) (/ (sqrt 3) -6))))
+  (list (list 0 (/ 1 (sqrt 3)))
+	(list (/ 1 2) (/ (sqrt 3) -6))
+	(list (/ -1 2) (/ (sqrt 3) -6))))
 
 ;; radius of circle
 (define (ctxf:circle)
@@ -490,12 +519,14 @@
 (define c #f)
 (ctxf/test/eval '( (startshape x)
 		   (shape x (
-			     (foo (x 3 y 4))
-			     (triangle ()) 
-			     (square ())
+			     ;(foo (x 3 y 4))
+			     ;(triangle ()) 
+			     ;(square ())
 			     (foo ())
 			     ))
 		   (shape foo (
-			       (circle (x 1 y 1))
+			       (circle (x 0.1 y 0.1))
 			       ))
 		   ))
+
+(draw (ctxf:canvas->uniform c))
