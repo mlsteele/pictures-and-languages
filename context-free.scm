@@ -315,53 +315,11 @@
 	      (ctxf:lookup
 	       (ctxf:lookup 'STARTSHAPE-NAME env)
 	       env)))
-	 (new-transform (transform:append transform tl)))
+	 (new-transform (transform:append transform
+					  (ctxf:t->resolve-consts tl env))))
     (if (too-small? transform)
 	'nothing
 	(ctxf:draw name new-transform env canvas))))
-
-(define (ctxf:transform->simplify t env)
-  3)
-
-(define (ctxf:const->resolve const env)
-  (pp `(const-resolve: const = ,const))
-  (ensure (ctxf:const-exists? const env)
-	  "No constant with that name exists!")
-  (let ((expr (ctxf:lookup const env)))
-   ; (if (pair? expr)
-	(eval/c expr env)))
-;	(eval expr env)
-(define (eval/c val env)
- ; (bkpt 'here)
-  (if (pair? val)
-      (let* ((op (eval (car val) e))
-	     (args (cdr val))
-	     (list-mapped-evald-args (map (lambda (ele)
-					    (eval/c ele env))
-					  args)))
-	  (apply op list-mapped-evald-args))
-      (let ((evald (eval val env)))
-	(if (ctxf:const? evald)
-	    ; (ctxf:const:val evald)
-	    (eval/c (ctxf:const:val evald) env)
-	    evald))))
-      
-#|
- (define (eval/c val env)
- ; (bkpt 'here)
-  (if (not (pair? val))
-      (let ((evald (eval val env)))
-	(if (ctxf:const? evald)
-	   ; (ctxf:const:val evald)
-	    (ctxf:const->resolve evald env)
-	    evald))
-      (let ((op (eval (car val) e))
-	    (args (cdr val)))
-	(let ((list-mapped-evald-args
-	       (map$ args (lambda (ele)
-			    (eval/c ele env)))))
-	  (apply op list-mapped-evald-args)))))
-|#
 
 (define (ctxf:eval:execute-shape expr env transform canvas)
  ; (pp `(,expr / old-transform: ,(matrix:vals (transform:matrix transform))))
@@ -372,7 +330,8 @@
 		   '())
 		  (else
 		   (error "Call to execute shape, incorrect form!"))))
-	 (new-transform (transform:append transform t)))
+	 (new-transform (transform:append transform
+					  (ctxf:t->resolve-consts t env))))
   ; (pp `(,expr / new-transform: ,(matrix:vals (transform:matrix new-transform))))
     (ctxf:draw shape-name new-transform env canvas)))
 
@@ -381,6 +340,42 @@
 
 (define (ctxf:eval:assign-const expr env transform canvas)
   (ctxf:analyze:const expr env))
+
+
+(define (ctxf:t->resolve-consts t env)
+  (define t-evald (list-copy t))
+  (let lp ((ind 0))
+    (if (>= ind (length t))
+	t-evald
+	(let ((num-args
+	      (case (list-ref t ind)
+		((flipx fx flipy fy) 0)
+		((x y dr drotate drot rr rrotate rrot dflip df rflip rf) 1)
+		((t translate trans s scale size) 2))))
+	  (let lp-eval ((j (+ ind 1)))
+	    (if (> j (+ ind num-args))
+		(lp (+ ind num-args 1))
+		(begin
+		  (list-set!
+		   t-evald
+		   j
+		   (ctxf:const->resolve (list-ref t j) env))
+		  (lp-eval (+ j 1)))))))))
+
+(define (ctxf:const->resolve const env)
+  (define (eval/c val env)
+    (if (pair? val)
+	(let* ((op (eval (car val) e))
+	       (args (cdr val))
+	       (list-mapped-evald-args (map (lambda (ele)
+					      (eval/c ele env))
+					    args)))
+	  (apply op list-mapped-evald-args))
+	(let ((evald (eval val env)))
+	  (if (ctxf:const? evald)
+	      (eval/c (ctxf:const:val evald) env)
+	      evald))))
+  (eval/c const env))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;Drawing code, straight from eval -> draw -> canvas
@@ -463,56 +458,9 @@
     weighted))
 
 
-#|
- ;; (startshape x)
- ;; (startshape x (r 3 s 4 ... ))
- (define (ctxf:eval:startshape expr env transform canvas)
-   (let* ((name (cadr expr))
-	 (this-transform (if (= 3 (length expr)) (caddr expr) '()))
-	 (new-transform (ctxf:transform-unify transform this-transform)))
-     (ctxf:draw name new-transform)))
 
- ;; (shape x ( (...) (...) ... )
- ;; (shape x (rule ( ... )) (rule ( ... )) ... )
- (define (ctxf:eval:shape expr env transform canvas)
-   (if (> (length expr) 3) ;; so we have rules
-       (let ((ps (ctxf:rule-probabilities (cddr expr)))
-	     (r (random 1.0)))
-	 (let lp ((ind 0))
-	   (if (= ind (- (length ps) 1))
-	       (ctxf:eval-seq (rule:get-seq (last expr)))
-	       (if (< r (sum (list-head ps (+ ind 1))))
-		   (ctxf:eval-seq (rule:get-seq
-				   (list-ref expr (+ ind 2)))) 
-		   (lp (+ ind 1))))))
-       (ctxf:eval-seq (caddr expr))))
 
- (define (ctxf:eval:primitive expr env transform canvas)
-   (if (= (length expr) 1)
-       (ctxf:draw-primitive (car expr) transform)
-       (let* ((t (cadr expr))
-	      (new-t (ctxf:transform-unify transform t)))
-	 (ctxf:draw-primitive (car expr) new-t))))
 
- ;; (rule ( .... ) )
- (define (ctxf:eval:rule expr env transform canvas)
-   (ctxf:eval-seq (rule:get-seq expr) env transform canvas))
-
- (define (ctxf:eval:shape-var expr env transform canvas)
-   3)
-
- (define (ctxf:eval:assign-const expr env transform canvas)
-   3)
-
- ;; ( ( ... ) ( ... ) ( ... ) )
- (define (ctxf:eval-seq expr env transform canvas)
-   (pp `(evaluating sequence ,expr)))
-
- (define (rule:get-seq rule)
-   (if (= (length rule) 3)
-       (caddr rule)
-       (cadr rule)))
-|#
 
 
 (define c #f)
@@ -571,11 +519,16 @@
 		   (let goo foo)
 		   (shape x (
 			     (circle (s 1.0 foo))
+			     (square (s goo 1))
 			     ))
 		   ))
 
 
-
+(ctxf/test/eval '(
+		  (startshape foo)
+		  (shape foo
+			 (rule (square ()))
+			 (rule (circle ())))))
 
 
 
