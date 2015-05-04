@@ -53,7 +53,7 @@
       (*ur*-add! `(line ,x1 ,y1 ,x2 ,y2))))
 
 (define (color! color)
-  (append! *ur* `(color ,color)))
+  (*ur*-add! `(color ,color)))
 
 (define (save-excursion thunk)
   (let ((transformation *transformation*))
