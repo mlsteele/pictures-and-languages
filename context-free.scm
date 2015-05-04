@@ -4,7 +4,7 @@
 ;;; Free Art language. If you desire more information, please visit
 ;;; their website: http://www.contextfreeart.org
 ;;;
-;;;  
+;;; 
 
 
 
@@ -179,7 +179,6 @@
     (if (ctxf:already-defined? name env)
 	(error "A shape or constant with that name already
                exists--cannot redefine it!"))
-    (pp `(analyze-const: val= ,(eval val env)))
     (ctxf:define-const name val env)))
 
 
@@ -243,7 +242,6 @@
 	(ctxf:draw name new-transform env canvas))))
 
 (define (ctxf:eval:execute-shape expr env transform canvas)
- ; (pp `(,expr / old-transform: ,(matrix:vals (transform:matrix transform))))
   (let* ((shape-name (car expr))
 	 (t (cond ((= (length expr) 2)
 		   (cadr expr))
@@ -253,7 +251,6 @@
 		   (error "Call to execute shape, incorrect form!"))))
 	 (new-transform (transform:append transform
 					  (ctxf:t->resolve-consts t env))))
-  ; (pp `(,expr / new-transform: ,(matrix:vals (transform:matrix new-transform))))
     (ctxf:draw shape-name new-transform env canvas)))
 
 (define (ctxf:eval:execute-primitive expr env transform canvas)
@@ -321,8 +318,6 @@
 			((1) (ctxf:rule->content (car rules-list)))
 			(else (ctxf:rule->content
 			       (ctxf:rules->pick-one rules-list))))))
-		(pp `(in draw: rules-list: ,rules-list
-			 rule: ,rule))
 		(if (eq? rule 'do-nothing)
 		    rule
 		    (for-each$
@@ -333,9 +328,6 @@
 					       canvas))))))))))
 
 (define (ctxf:draw:primitive shape-name transform canvas)
-  (pp `(draw-primitive ,shape-name :
-	       ; ,(transform:stack transform) :
-		,(matrix:vals (transform:matrix transform))))
   (ctxf:canvas:add-shape canvas
 			     `(,shape-name
 			       ,(transform:matrix transform))))
@@ -503,6 +495,7 @@
 (define (ctxf input-lines)
   (assert (and (not (null? input-lines))
 	       (ctxf:cmd/startshape? (car input-lines))))
+  (display "Evaluating Context Free drawing...\n")
   (let ((env (ctxf:make-env)))
     (for-each (lambda (command)
 		(ctxf:analyze command env))
@@ -560,91 +553,3 @@
 			 (branch (dr 1 y 0.13 s 0.97 0.97))))
 	       )
 	))
-#|
-;; doesn't work:
- (ctxf '(
-	(startshape branch)
-	(shape branch (
-		       (rule 0.01
-			     (circle ())
-			     (branch (dr -10 y 0.01)))
-		       (rule 0.99
-			     (circle ())
-			     (branch (dr 10 y 0.01))
-			     )
-		       ))
-	(shape fillCircle (
-			   (circle ())
-			   (fillCircle (s 0.999 0.999))
-			   ))
-	))
-|#
-#|
-
- (ctxf/test/eval '( (startshape x)
-		    (shape x (
-			      ;(foo (x 3 y 4))
-			      ;(triangle ()) 
-			      ;(square ())
-			      (foo ())
-			      ))
-		    (shape foo (
-				(circle (x 0.1 y 0.1))
-				))
-		    ))
-
- (ctxf/test/eval '( (startshape x)
-		    (shape x (
-			      (circle (s 0.01 0.01))
-			      (triangle ())
-			      (triangle (y 0.2))
-			      (square ())
-			      (foo (dr 90))
-			      ))
-		    (shape foo (
-				(triangle (y 0.2))
-				))
-		    ))
-
-
- (ctxf/test/eval '( (startshape x)
-		    (shape x (
-			      (square ())
-			      (x (s 0.9 0.9))
-			      ))
-		    (shape foo (
-				(triangle (y 0.2))
-				))
-		    ))
-
- (ctxf/test/eval '( (startshape x)
-		    (shape x (
-			      (square ())
-			      (x (y 1.01 s 0.99 0.99 dr -1))
-			      ))
-		    ))
-
-
- (ctxf/test/eval '( (startshape x)
-		    (shape x (
-			      (circle (s 1.0 0.5))
-			      ))
-		    ))
-
- (ctxf/test/eval '( (startshape x)
-		    (let foo 0.5)
-		    (let goo foo)
-		    (shape x (
-			      (circle (s 1.0 foo))
-			      (square (s goo 1))
-			      ))
-		    ))
-
-
- (ctxf/test/eval '(
-		   (startshape foo)
-		   (shape foo
-			  (rule ((square ())))
-			  (rule ((circle ()))))))
-|#
-
