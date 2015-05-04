@@ -225,7 +225,7 @@
 	 (d1 (dist tbl tbr))
 	 (d2 (dist tbr ttr))
 	 (d3 (dist ttr tbl))
-	 (threshold 1e-3))
+	 (threshold 1e-2))
     (or (< d1 threshold)
 	(< d2 threshold)
 	(< d3 threshold))))
@@ -546,6 +546,39 @@
 		    (square (y 0.8))
 		    ))
 	))
+
+
+(ctxf '(
+	(startshape branch)
+	(shape branch
+	       (rule 3 (
+			
+			(branch (dr 5 s 0.95 0.95))
+			(branch (dr -25 s 0.95 0.95))))
+	       (rule 99 (
+			 (triangle (s 0.4 0.4))
+			 (branch (dr 1 y 0.13 s 0.97 0.97))))
+	       )
+	))
+#|
+;; doesn't work:
+ (ctxf '(
+	(startshape branch)
+	(shape branch (
+		       (rule 0.01
+			     (circle ())
+			     (branch (dr -10 y 0.01)))
+		       (rule 0.99
+			     (circle ())
+			     (branch (dr 10 y 0.01))
+			     )
+		       ))
+	(shape fillCircle (
+			   (circle ())
+			   (fillCircle (s 0.999 0.999))
+			   ))
+	))
+|#
 #|
 
  (ctxf/test/eval '( (startshape x)
