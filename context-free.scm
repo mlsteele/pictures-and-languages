@@ -5,6 +5,8 @@
 ;;; their website: http://www.contextfreeart.org
 ;;;
 ;;; 
+;;; possible commands: startshape, shape, square, circle, triangle, rule,
+;;;                    <shapename>, (let/set/set!/=/define/assign)
 
 
 
@@ -43,6 +45,7 @@
 (define (ctxf:make-env)
     (make-top-level-environment))
 
+;; Checks if the variable is bound in the environment
 (define (ctxf:exists? name env)
   (and (eq? (environment-reference-type env name) 'normal)
        (environment-bound? env name)))
@@ -50,7 +53,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Shapes & Constants
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	      
+
+;;; We store the analyzed definitions of startshapes, shapes,
+;;; and constants in records so we can access data about them
+;;; while evaluating and drawing.
+
 (define-record-type <ctxf:startshape>
   (%ctxf:startshape:new name transforms)
     ctxf:startshape?
@@ -86,6 +93,8 @@
   (and (ctxf:exists? name env)
        (ctxf:const? (ctxf:lookup name env))))
 
+;; Checks if a shape or a const has been declared already. 
+;; Does not check if the startshape shares the name.
 (define (ctxf:already-defined? name env)
   (and (ctxf:exists? name env)
        (or (ctxf:shape? (ctxf:lookup name env))
@@ -94,6 +103,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Language Recognizers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Predicates to decide what type of command a command
+;;; is, when analyzing and evaluating.
 
 (define (ctxf:cmd/startshape? expr)
   (tagged-list? expr 'startshape))
@@ -118,6 +130,8 @@
 (define (ctxf:cmd/rule? expr)
   (tagged-list? expr 'rule))
 
+;; We allow users to use a variety of commands to
+;; assign a const
 (define (ctxf:cmd/assign-const? expr)
   (or (tagged-list? expr 'let)
       (tagged-list? expr 'set)
@@ -128,6 +142,8 @@
       (tagged-list? expr 'const)
       (tagged-list? expr 'constant)))
 
+;; Assumes any command that's not of some other
+;; form is a call to execute a shape
 (define (ctxf:cmd/shape-var? expr)
   (and (not (or (ctxf:cmd/startshape? expr)
 		(ctxf:cmd/shape? expr)
@@ -140,6 +156,9 @@
 ;;; CTXF Language Analyzer
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; At the beginning of execution, the program is first
+;;; analyzed to store high-level definitions of startshapes,
+;;; shapes, and consts
 (define ctxf:analyze (make-generic-operator 2 'ctxf:analyze))
 (defhandler ctxf:analyze
   (lookup-later 'ctxf:analyze:startshape) ctxf:cmd/startshape?)
@@ -148,8 +167,7 @@
 (defhandler ctxf:analyze
   (lookup-later 'ctxf:analyze:const) ctxf:cmd/assign-const?)
 
-
-;; only let them have one startshape
+;; By the way, we only let them have one startshape
 (define (ctxf:analyze:startshape expr env)
   (let ((name (symbol-append 'startshape// (cadr expr)))
 	(transforms (if (= 3 (length expr))
@@ -161,7 +179,7 @@
     (ctxf:define 'STARTSHAPE-NAME name env)
     (ctxf:define-startshape name transforms env)))
 
-;; only let them assign a given shape once
+;; You can only assign a shape definition once
 (define (ctxf:analyze:shape expr env)
   (let ((name (cadr expr))
 	(rules (if (> (length expr) 2)
@@ -172,7 +190,7 @@
                  exists--cannot redefine it!" name))
     (ctxf:define-shape name rules env)))
 
-;; we'll only let them assign a constant once
+;; You can only assign a constant once
 (define (ctxf:analyze:const expr env)
   (let ((name (cadr expr))
 	(val (caddr expr)))
@@ -181,10 +199,14 @@
                exists--cannot redefine it!"))
     (ctxf:define-const name val env)))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CTXF Language Evaluator
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; After analysis, we attempt to execute the startshape,
+;;; which will in turn force us to recursively evaluate
+;;; the commands in the definition of the startshape, and
+;;; so on.
 
 (define ctxf:eval (make-generic-operator 4 'ctxf:eval))
 (defhandler ctxf:eval
@@ -195,7 +217,6 @@
   (lookup-later 'ctxf:eval:execute-primitive) ctxf:cmd/primitive?)
 (defhandler ctxf:eval
   (lookup-later 'ctxf:eval:assign-const) ctxf:cmd/assign-const?)
-
 
 ;; Checks if the transformation matrix is at the point where
 ;; shapes drawn can't really be seen by the human. We take
@@ -260,7 +281,7 @@
   (ctxf:analyze:const expr env))
 
 ;;; Takes a transformation list and resolves all of the constants
-;;;  referenced within.
+;;; referenced within, if any.
 (define (ctxf:t->resolve-consts t env)
   (define t-evald (list-copy t))
   (let lp ((ind 0))
@@ -301,6 +322,11 @@
 ;;; CTXF Drawing to Canvas
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; During evaluation, we attempt to draw any of the
+;;; shapes that are invoked. This will draw either a
+;;; primitive or a non-primitive (in which case it
+;;; calls to evaluate the commands within).
+
 (define (ctxf:draw shape-name transform env canvas)
   (if (too-small? transform)
       'stop-drawing
@@ -327,12 +353,11 @@
 					       transform
 					       canvas))))))))))
 
+;; Draws a primitive object to the canvas record.
 (define (ctxf:draw:primitive shape-name transform canvas)
   (ctxf:canvas:add-shape canvas
 			     `(,shape-name
 			       ,(transform:matrix transform))))
-
-
 
 ;;; Takes a rule and extracts its content. Can take any of:
 ;;; (rule ( ... ))
@@ -387,8 +412,22 @@
 ;;; CTXF Transforming Canvas Shapes to UR
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; list of e.g.: (square ((1 0 0) (0 1 0) (0 0 1)))
-;; i.e. list of primitive shapes with their matrix transforms
+;;; At the end of the day, we need to transform the shapes
+;;; listed in the canvas record to the uniform representation.
+;;; Becuase all of the transformations we do to shapes are
+;;; quasi-linear, line-straightness is preserved: hence, a
+;;; square or triangle can be successfully represented by
+;;; its four (or three) constituent lines which can be stored
+;;; in the UR as lines whose constituent points are transformed
+;;; by the transformation matrix.
+;;; The shapes list in the canvas record is a list of primitive
+;;; formulations, each of the form
+;;;  (<primitive-shape> <matrix-list-representation>)
+;;; e.g.
+;;;  (square ((1 0 0) (0 1 0) (0 0 1)))
+;;; which, in this case, signifies a Context Free unit
+;;; square that's transformed by the matrix.
+
 (define (ctxf:canvas->uniform canvas)
   (define shapes (ctxf:canvas:shapes canvas))
   (define (canvas->uniform:do ind)
@@ -448,50 +487,36 @@
 ;;; Primitive Shapes: Key Points
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; cw starting top left, coords
+;; Coordinates of the vertices, starting at top
+;; left and going clockwise
 (define (ctxf:square)
   (list (list (/ -1 2) (/ 1 2))
 	(list (/ 1 2) (/ 1 2))
 	(list (/ -1 2) (/ -1 2))
 	(list(/ 1 2) (/ -1 2))))
 
-;; cw starting top, coords
+;; Coordinates of the vertices, starting at the
+;; top and going clockwise
 (define (ctxf:triangle)
   (list (list 0 (/ 1 (sqrt 3)))
 	(list (/ 1 2) (/ (sqrt 3) -6))
 	(list (/ -1 2) (/ (sqrt 3) -6))))
 
-;; radius of circle
+;; Radius of circle
 (define (ctxf:circle)
   (/ 1 2))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; This is what the user calls
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-
-
-;;; For now, the user will have to write everything inside a (ctxf '( ... ))
-;;; function, e.g.
-;;; (ctxf '(
-;;;   (startshape S)
-;;;   ...
-;;;   ...))
-
-;;; possible commands: startshape, shape, square, circle, triangle, rule,
-;;;                    <shapename>, (let/set/set!/=/define/assign)
-
-
-;; possible transforms:
-;; x # translate by # in x
-;; y # translate by # in y
-;; {t, translate, trans} # # translate in x and y
-;; {s, scale, size} # # scale in x and y, respectively
-;; {dr, drotate, drot} # rotate ccw by # degrees
-;; {rr, rrotate, rrot} # rotate ccw by # radians
-;; {flipx, fx} flip across x axis
-;; {flipy, fy} flip across y axis
-;; {dflip, df} # flip across line through center that's # degrees above horiz
-;; {rflip, rf} # flip across line through center that's # rads above horiz
-
+;; This function takes a list of commands and evaluates the program,
+;; thereafter drawing the shapes to the screen with X. The method
+;; will be called like this:
+;; (ctxf '(
+;;   (startshape S)
+;;   ...
+;;   ...))
 (define (ctxf input-lines)
   (assert (and (not (null? input-lines))
 	       (ctxf:cmd/startshape? (car input-lines))))
@@ -509,47 +534,50 @@
       (draw (ctxf:canvas->uniform canvas))
       'done)))
 
-(ctxf '(
-		  (startshape random)
-		  (shape random
-			 (rule ((square ())
-				(random (dr -2 y 0.1 s 0.9 0.9))))
-			 (rule ((circle ())
-				(random (dr 2  y 0.1 s 0.9 0.9)))))))
-(ctxf '(
-	(startshape foo (dr 45))
-	(shape foo (
-		    (circle (s 0.01 0.01))
-		    (triangle (y .5))
-		    (bar (s 0.5 0.5))
-		    ))
-	(shape bar (
-		    (square (x 0.5))
-		    ))
-	))
+;;; Here are some examples of execution:
+#|
+ (ctxf '(
+	(startshape random)
+	(shape random
+	       (rule ((square ())
+		      (random (dr -2 y 0.1 s 0.9 0.9))))
+	       (rule ((circle ())
+		      (random (dr 2  y 0.1 s 0.9 0.9)))))))
+ 
+ (ctxf '(
+	 (startshape foo (dr 45))
+	 (shape foo (
+		     (circle (s 0.01 0.01))
+		     (triangle (y .5))
+		     (bar (s 0.5 0.5))
+		     ))
+	 (shape bar (
+		     (square (x 0.5))
+		     ))
+	 ))
 
-(ctxf '(
-	(startshape s)
-	(shape s (
-		  (triangle (s 0.1 0.1))
-		  (bar (dr 45))
-		  ))
-	(shape bar (
-		    (square (y 0.4))
-		    (square (y 0.8))
-		    ))
-	))
+ (ctxf '(
+	 (startshape s)
+	 (shape s (
+		   (triangle (s 0.1 0.1))
+		   (bar (dr 45))
+		   ))
+	 (shape bar (
+		     (square (y 0.4))
+		     (square (y 0.8))
+		     ))
+	 ))
 
+ (ctxf '(
+	 (startshape branch)
+	 (shape branch
+		(rule 3 (
 
-(ctxf '(
-	(startshape branch)
-	(shape branch
-	       (rule 3 (
-			
-			(branch (dr 5 s 0.95 0.95))
-			(branch (dr -25 s 0.95 0.95))))
-	       (rule 99 (
-			 (triangle (s 0.4 0.4))
-			 (branch (dr 1 y 0.13 s 0.97 0.97))))
-	       )
-	))
+			 (branch (dr 5 s 0.95 0.95))
+			 (branch (dr -25 s 0.95 0.95))))
+		(rule 99 (
+			  (triangle (s 0.4 0.4))
+			  (branch (dr 1 y 0.13 s 0.97 0.97))))
+		)
+	 ))
+|#

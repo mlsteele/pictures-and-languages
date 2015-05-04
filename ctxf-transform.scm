@@ -1,5 +1,17 @@
 ;;;; CTXF Transform record
 
+;; possible transforms:
+;; x # translate by # in x
+;; y # translate by # in y
+;; {t, translate, trans} # # translate in x and y
+;; {s, scale, size} # # scale in x and y, respectively
+;; {dr, drotate, drot} # rotate ccw by # degrees
+;; {rr, rrotate, rrot} # rotate ccw by # radians
+;; {flipx, fx} flip across x axis
+;; {flipy, fy} flip across y axis
+;; {dflip, df} # flip across line through center that's # degrees above horiz
+;; {rflip, rf} # flip across line through center that's # rads above horiz
+
 (define-record-type <transform>
   (%transform:new transforms-li matrix)
   transform?
