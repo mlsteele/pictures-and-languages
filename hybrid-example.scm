@@ -69,3 +69,58 @@
 (hybrid-reset!)
 (scale 0.1 tree)
 (draw *ur*)
+
+
+(hybrid-reset!)
+(define (square2 size)
+  (repeat 4 (lambda _
+    (line! 0 0 0 size)
+    (forward size)
+    (rotate 90))))
+(color! "black")
+(square 100)
+(draw *ur*)
+
+
+(hybrid-reset!)
+(repeat 10 (lambda _
+  (repeat 6 (lambda _
+    ;; inside this inner repeat, the transformation
+    ;; is advanced, and that effects the next line
+    (rotate 40)
+    (color! "red")
+    (line! 0 0 0 100)
+    (forward 100)
+    (rotate -10)
+    (color! "blue")
+    (line! 0 0 0 100)
+    (forward 100)))
+  ;; But the out here in the outer repeat, all the
+  ;; transformation of the inner repeat is unwound.
+  ;; So the inner repeat doesn't have to be responsible
+  ;; for returning the would-be turtle to the center again.
+  (rotate (/ 360 10))))
+(draw *ur*)
+
+
+(define (swirl decoration)
+  (repeat 10 (lambda _
+    (repeat 6 (lambda _
+      ;; inside this inner repeat, the transformation
+      ;; is advanced, and that effects the next line
+      (rotate 40)
+      (color! "red")
+      (line! 0 0 0 100)
+      (forward 100)
+      (decoration)
+      (rotate -10)
+      (color! "blue")
+      (line! 0 0 0 100)
+      (forward 100)))
+    (rotate (/ 360 10)))))
+(hybrid-reset!)
+(swirl (lambda _
+  (color! "purple")
+  (mirror 80 (lambda _
+    (square 50)))))
+(draw *ur*)

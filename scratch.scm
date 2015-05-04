@@ -39,15 +39,31 @@
     (fd 5)
     (pen-down)
     (fd 5)))
-(color "RED")
-(dotted-line 50)
-(rt 90)
-(color "blue")
-(dotted-line 50)
+(to (curve)
+  (repeat 10
+    (repeat 2
+      (color "RED")
+      (dotted-line 10)
+      (color "BLUE")
+      (dotted-line 5)
+      (rt 10))))
+(to (flower)
+  (repeat 10
+    (curve)
+    (pen-up)
+    (rt 180)
+    (fd 100)
+    (pen-down)
+    (rt 180)))
+
+(to (diminishing-ngons sides size)
+  (limit size 0.01)
+  (ngon sides size)
+  (diminishing-ngons sides (- size 10)))
+(diminishing-ngons 5 250)
 ;;; (commit) terminates the repl and returns the canvas
 (commit)
-
-(draw (ur-scale 1/100 1/100 u))
+(draw ur) ;; Draw using the X backend
 
 ;;; Save the drawing as an SVG.
 (pp u)
