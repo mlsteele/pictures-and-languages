@@ -30,8 +30,8 @@
 ;;; A graphics window should pop up and show a slanted line.
 
 
-;;; Now draw from repl input
-(define u (logo:canvas:ur (logo:repl)))
+;;; Draw from REPL input.
+(define ur (logo:canvas:ur (logo:repl)))
 ;;; Into REPL
 (to (dotted-line length)
   (repeat (/ length 10)

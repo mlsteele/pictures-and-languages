@@ -227,7 +227,7 @@
 (define (logo:eval-limit expr env canvas)
   (let* ((valexpr (cadr expr))
          (limval  (caddr expr))
-         (curval  (logo:eval-valexpr valexpr env varname)))
+         (curval  (logo:eval-valexpr valexpr env canvas)))
     (if (< curval limval)
       'limit-reached)))
 

@@ -1,6 +1,14 @@
 ;;;; Draw looks at the uniform representation and attempts to draw, using
 ;;;; Scheme's built-in graphics library, from an invariant representation.
 
+(define *draw-reuse-device* #f)
+
+(define (draw-reuse-device! #!optional reuse)
+  (if (or (default-object? reuse)
+           (eq? reuse #t))
+    (set! *draw-reuse-device* #t)
+    (set! *draw-reuse-device* #f))
+  'ok)
 
 (define (draw:point? expr)
   (and (tagged-list? expr 'point)
@@ -25,7 +33,9 @@
 
 
 (define (draw ur)
-  (draw:start-graphics!)
+  (if (or (eq? device #f)
+          (not *draw-reuse-device*))
+    (draw:start-graphics!))
   (let* ((width (graphics-device-width device))
          (height (graphics-device-height device))
          (ur (ur-fit-for-draw ur width height)))
