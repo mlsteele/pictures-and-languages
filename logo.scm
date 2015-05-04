@@ -342,7 +342,7 @@
 (define (logo:repl)
   (let ((canvas (logo:canvas:new))
         (env (logo:make-env)))
-    (logo:eval-file "logo-library.scm" env canvas)
+    (logo:eval-file "logo-library.logo" env canvas)
     (define (loop)
       (display "\nlogo> ")
       (let ((input (read)))
