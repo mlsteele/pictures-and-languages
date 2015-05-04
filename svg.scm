@@ -57,7 +57,7 @@
         ;; point not implemented
         ((point) "")
         (else (error "ur->svg does not recognize ur element" ele))))
-      ur)))
+      (ur-fit-for-svg ur 500 210))))
 
 (define (ur->svg-file u filename)
   (let ((s (ur->svg u)))

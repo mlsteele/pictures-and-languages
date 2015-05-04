@@ -98,6 +98,14 @@ color = color "red|green|blue|..."
          (ur (ur-translate ur .05 .05)))
     ur))
 
+(define (ur-fit-for-svg ur width height)
+  (let* ((ur ur)
+         ;; put corner at (0,0)
+         (ur (ur-zero-corner ur))
+         ;; fit into box of (0,0) to (width, height)
+         (ur (ur-fit-box ur width height)))
+    ur))
+
 ;;; Take any ur and put its lower left corner at (0,0)
 (define (ur-zero-corner ur)
   (ur-bounds ur (lambda (x-min y-min x-max y-max)
