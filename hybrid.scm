@@ -130,7 +130,8 @@
 (define (mirror degrees thunk)
   (save-excursion thunk)
   (flip degrees (lambda _
-    (save-excursion thunk))))
+    (save-excursion thunk)))
+  'ok)
 
 (define (square #!optional size)
   (if (default-object? size)
