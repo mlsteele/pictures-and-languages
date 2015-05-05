@@ -1,6 +1,6 @@
 ;;; Here are some examples of execution for
 ;;; Context Free (CTXF)
-
+(load "load")
 #|
  (ctxf '(
 	(startshape random)
@@ -47,3 +47,22 @@
 		)
 	 ))
 |#
+
+(define (make-tree)
+  (ctxf '(
+	  (startshape branch)
+	  (shape branch
+		 (rule 5 (
+
+			  (branch (dr 5 s 0.95 0.95))
+			  (branch (dr -25 s 0.95 0.95))))
+		 (rule 99 (
+			   (fillTriangle (s 0.4 0.4))
+			   (branch (dr 1 y 0.13 s 0.97 0.97))))
+		 )
+	  (shape fillTriangle (
+			       (square ())
+			       (fillTriangle (s 0.95 0.95))
+			       ))
+	  ))
+)
