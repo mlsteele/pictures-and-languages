@@ -4,12 +4,80 @@
 ;;; Free Art language. If you desire more information, please visit
 ;;; their website: http://www.contextfreeart.org
 ;;;
-;;; 
-;;; possible commands: startshape, shape, square, circle, triangle, rule,
-;;;                    <shapename>, (let/set/set!/=/define/assign)
-
-
-
+;;; Possible commands: startshape, shape, <shape-name>, <primitive>,
+;;;                    {let/set/set!/=/define/assign/const/constant}
+;;; Where <shape-name> was defined with a (shape <shape-name> ...) command,
+;;; and <primitive> is one of {triangle, square, circle}.
+;;;
+;;; All programs must start with a (startshape <s>) command, which declares
+;;; the startshape to be <s>. Actually, the startshape command can be of the form:
+;;;  (startshape <s>), (startshape <s> ()), or (startshape <s> (args...))
+;;; where the first two are equivalent and the third one invokes transformation
+;;; parameters on the startshape, as explained later. 
+;;; There must be exactly one startshape command in the program.
+;;;
+;;; The user must then call a (shape <s> ... ) command to declare rules for
+;;; the shape. These rules explain what is done/drawn when the shape is
+;;; invoked. There can only be one shape command per shape-name. The shape
+;;; command can be one of two forms:
+;;;  (shape <s> <command-list>) or
+;;;  (shape <s> (rule <?num> <command-list>) ... (rule <?num> <command-list>))
+;;; where <?num> represents an optional numeric argument, and <command-list>
+;;; is a list of commands, of the form
+;;;  (<command-1> ... <command-n>)
+;;; where each <command-i> is a command like (square ... ), (<shape-name> ...),
+;;; etc.
+;;; In the second case, the evaluator picks one of the rules randomly, based
+;;; on the weights supplied by the user. The optional argument <?num> is the
+;;; weight assigned, and if no weight is assigned, assume it's 1. The weights
+;;; are normalized over 1, and a rule is picked based on the weights.
+;;;
+;;; Regardless, once we have a <command-list> to evaluate, we go through 
+;;; one command at a time, evaluating each one in turn. Invocations to
+;;; draw primitives are executed and drawn immediately, while invocations
+;;; to draw non-primitives are evaluated recursively.
+;;;
+;;; To make an invocation to draw a primitive shape, we call
+;;; (<primitive-name>) or (<primitive-name> ()) or (<primitive-name> (args...))
+;;; The first two are equivalent, and call to draw the primitive shape
+;;; with no modifications. The third requests to draw the primitive shape
+;;; with the transformation parameters.
+;;;
+;;; Similarly, we invoke a drawing on a non-primitive by calling
+;;; (<shape-name>) or (<shape-name> ()) or (<shape-name> (args...))
+;;; which attempts to draw that shape according to rules declared by the user.
+;;;
+;;; A user can assign a constant by calling, for example,
+;;;  (let <const-name> <expr>)
+;;; where <expr> can either be a number or an expression that evaluates to a
+;;; number. The expression can itself refer to other constants previously
+;;; defined.
+;;;
+;;; Transformation parameters can be of the following form:
+;;;  x # translate by # in x
+;;;  y # translate by # in y
+;;;  {t, translate, trans} # # translate in x and y
+;;;  {s, scale, size} # # scale in x and y, respectively
+;;;  {dr, drotate, drot} # rotate ccw by # degrees
+;;;  {rr, rrotate, rrot} # rotate ccw by # radians
+;;;  {flipx, fx} flip across x axis
+;;;  {flipy, fy} flip across y axis
+;;;  {dflip, df} # flip across line through center that's # degrees above horiz
+;;;  {rflip, rf} # flip across line through center that's # rads above horiz
+;;;
+;;; To apply some transformations to an invocation (for example, on foo),
+;;; we call (foo (args...)). (args...) is the sequence of requested 
+;;; transformations, in left-to-right order, e.g.
+;;;  (x 3 s 0.5 0.5 rr 10)
+;;; this example translates 3 to the right, scales by 0.5 in both dimensions,
+;;; and then rotates ccw by 10 radians.
+;;; Transformations are applied in the current frame of reference. So, if a
+;;; call to foo is made with a 45-degree rotation transformation request,
+;;; then any invocation made within foo that requests a transformation is
+;;; applied in the current rotated frame, so, for example, a translation by
+;;; 1 in x is actually a translation to the upper-right by 1 in the original
+;;; frame of reference. Hence, as we progress down the call chain
+;;; recursively, we compound transformations.
 
 (load "load")
 
