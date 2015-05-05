@@ -122,10 +122,10 @@
           (loop (- n 1))))))))
 
 ;;; Use this to call a recursive function safely.
-(define (guard thunk)
+(define (guard thunk . args)
   (call-with-current-continuation (lambda (k)
     (fluid-let ((*limit-k* k))
-      (thunk)))))
+      (apply thunk args)))))
 
 (define (mirror degrees thunk)
   (save-excursion thunk)

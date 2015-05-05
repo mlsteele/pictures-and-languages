@@ -74,15 +74,16 @@
   'ok)
 
 ;;; This function in a more Context Free-like style.
-(define (little-tree)
+(define (little-tree #!optional depth)
+  (if (default-object? depth) (set! depth 1))
   (square 10)
-  (if (= (random 2) 0)
+  (if (= (random (ceiling (/ depth 2))) 0)
     (save-excursion (lambda _
       (scale 0.8)
       (translate 10 30 (lambda _
-        (guard little-tree)))
+        (guard little-tree (+ depth 1))))
       (translate -20 30 (lambda _
-        (guard little-tree)))))))
+        (guard little-tree (+ depth 1))))))))
 
 ;;; This procedure is written more like Logo.
 ;;; Draw an n-sided polygon with a decoration at the corners.
