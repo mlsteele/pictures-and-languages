@@ -8,5 +8,5 @@
 (load "logo")
 (load "draw")
 (load "svg")
-(load "context-free")
+(load "ctxf")
 (load "hybrid")
