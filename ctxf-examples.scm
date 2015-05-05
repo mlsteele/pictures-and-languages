@@ -66,3 +66,20 @@
 			       ))
 	  ))
 )
+
+(define (make-tree-easier)
+  (ctxf '(
+	  (startshape branch)
+	  (shape branch
+		 (rule 7 (
+			  (branch (dr 5 s 0.95 0.95))
+			  (branch (dr -25 s 0.95 0.95))))
+		 (rule 99 (
+			   (fillTriangle (s 0.4 0.4))
+			   (branch (dr 1 y 0.13 s 0.92 0.92))))
+		 )
+	  (shape fillTriangle (
+			       (TRIANGLE ())
+			       ))
+	  ))
+)
