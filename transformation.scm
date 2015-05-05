@@ -1,4 +1,5 @@
-;;; Used by everyone
+;;;; This file deals with creating a 3x3 transformation
+;;;; matrix given a transformation.
 
 (define (t:translate x y)
   (%matrix:new `((1 0 ,x)

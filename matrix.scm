@@ -1,4 +1,7 @@
-;;;; 2x2 Matrix Class
+;;;; This file deals with 3x3 matrices. We use 3x3 matrices
+;;;; to do 2-dimensional transformations (including
+;;;; translations, via homogeneous coordinates). We use
+;;;; a record to store the matrix data.
 
 (define-record-type <matrix>
   (%matrix:new list-of-lists)

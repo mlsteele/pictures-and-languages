@@ -1,4 +1,5 @@
-;;;; CTXF Transform record
+;;;; CTXF Transform record deals with storing transforms
+;;;; for our ctxf evaluator.
 
 ;; possible transforms:
 ;; x # translate by # in x
@@ -12,12 +13,21 @@
 ;; {dflip, df} # flip across line through center that's # degrees above horiz
 ;; {rflip, rf} # flip across line through center that's # rads above horiz
 
+;; A transform record contains both a stack of the transform commands up
+;; to this point, as well as the net transformation matrix. We do this so
+;; that we have access to the transform commands given if we ever need them
+;; again. (This functionality is not implemented in our current code but
+;; is available for extension.)
 (define-record-type <transform>
   (%transform:new transforms-li matrix)
   transform?
   (matrix transform:matrix)
   (transforms-li transform:stack))
 
+;; Given two transforms, combines them by appending
+;; the transformations of t2 onto the end of the
+;; transformations of t1. Does not mutate t1 or t2,
+;; instead returns a new transform record.
 (define (transform:combine t1 t2)
   (let ((new-transforms (append (transform:stack t1)
 				(transform:stack t2)))
@@ -25,8 +35,11 @@
 			 (transform:matrix t1))))
     (%transform:new new-transforms new-matrix)))
 
-;; like
-;; (transform:append <transform-object> (r 1 s 2 ...))
+;; Given a transform record and a transformation params
+;; list (as specified in ctxf), creates a new transform
+;; record which is the original but with the operations
+;; specified by the params list appended to those from
+;; the original transform.
 (define (transform:append transform t)
   (let ((transform-stack (append (transform:stack transform)
 				 (list t)))
@@ -34,14 +47,13 @@
 		     (transform:t->matrix t))))
     (%transform:new transform-stack matrix)))
 
-;; creates a new identity transform, i.e. a fresh transform
+;; Creates a new identity transform, i.e. a fresh transform
 ;; with nothing on the stack and an identity matrix
 (define (transform:id)
   (%transform:new '() (m:identity)))
 
-
 ;; Given a transformation e.g. ( s 1 2 x 2 y 3 ... ), turns
-;; it into a matrix in the natural basis
+;; it into a matrix in the natural basis.
 (define (transform:t->matrix t)
   (define (t:->:do li)
     (if (null? li)
