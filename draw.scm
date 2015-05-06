@@ -39,9 +39,9 @@
   (let* ((width (graphics-device-width device))
          (height (graphics-device-height device))
          (ur (ur-fit-for-draw ur width height)))
-    (graphics-operation device 'set-foreground-color "black")
-    (graphics-operation device 'fill-circle 0 0 10)
-    (graphics-operation device 'set-foreground-color "white")
+    ;(graphics-operation device 'set-foreground-color "black")
+    ;(graphics-operation device 'fill-circle 0 0 10)
+    ;(graphics-operation device 'set-foreground-color "white")
     (for-each (lambda (ele)
       (draw:do device ele)) ur)))
 
