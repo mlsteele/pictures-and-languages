@@ -8,18 +8,22 @@
   matrix?
   (list-of-lists matrix:vals matrix:vals!))
 
+;;; Index into a matrix, using 1 index
 (define (matrix:ind ind m)
   (let ((li (matrix:vals m))
 	(c (modulo ind 3))
 	(r (floor (/ ind 3))))
     (matrix:rc r c m)))
 
+;;; Index into a matrix, using row and col indices
 (define (matrix:rc r c m)
   (list-ref (list-ref (matrix:vals m) r) c))
 
+;;; Returns an identity matrix of size 3 x 3
 (define (m:identity)
   (%matrix:new '((1 0 0) (0 1 0) (0 0 1))))
 
+;;; Matrix multiplication for 3x3
 (define (m:* m1 m2)
   (let ((a (+ (* (matrix:ind 0 m1) (matrix:ind 0 m2))
 	      (* (matrix:ind 1 m1) (matrix:ind 3 m2))
@@ -53,7 +57,8 @@
 		       (list g h i)))))
 
 ;; assume that vector is a list of the form (x y) or (x y w)
-;; (the latter corresponds to (x/w y/w), homog coords)
+;; (the latter corresponds to (x/w y/w), homog coords). Returns
+;; the product of a matrix M and a vector v.
 (define (m:*v m vec)
   (assert (or (= (length vec) 2) (= (length vec) 3)))
   (let* ((hv
@@ -64,13 +69,17 @@
 	 (b (list-dot (cadr (matrix:vals m)) hv))
 	 (c (list-dot (caddr (matrix:vals m)) hv)))
     (list (/ a c) (/ b c))))
-  
+
+;; Runs the dot product of two lists for use in Matrix operations.
 (define (list-dot l1 l2)
   (fold-right + 0 (map (lambda (ele)
 			 (* (car ele) (cadr ele)))
 		       (zip l1 l2))))
+
+;;; Simple methods for constant multiplication, etc
+
 (define (m:c* c m)
-  (let ((c-mat (%matrix:new c 0 0 c)))
+  (let ((c-mat (%matrix:new '((c 0 0) (0 c 0) (0 0 c)))))
     (m:* c-mat m)))
 
 (define (m:*c m c)

@@ -1,6 +1,8 @@
 ;;; Here are some examples of execution for
 ;;; Context Free (CTXF)
+
 (load "load")
+
 #|
  (ctxf '(
 	(startshape r)
@@ -46,9 +48,9 @@
 			  (branch (dr 1 y 0.13 s 0.97 0.97))))
 		)
 	 ))
-|#
 
-(define (make-tree)
+
+ (define (make-tree)
   (ctxf '(
 	  (startshape branch)
 	  (shape branch
@@ -67,7 +69,7 @@
 	  ))
 )
 
-(define (make-tree-easier)
+ (define (make-tree-easier)
   (ctxf '(
 	  (startshape branch)
 	  (shape branch
@@ -84,7 +86,7 @@
 	  ))
 )
 
-(define (make-border)
+ (define (make-border)
   (ctxf '(
 	  (startshape two-borders)
 	  (shape two-borders (
@@ -100,3 +102,4 @@
 				))
 	  )))
 				 
+|#

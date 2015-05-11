@@ -1,6 +1,9 @@
 ;;;; Draw looks at the uniform representation and attempts to draw, using
 ;;;; Scheme's built-in graphics library, from an invariant representation.
 
+;; Reuse device is for when you leave a graphics window open and want
+;; to draw something in that window again, instead of closing it and
+;; having the entity drawn on a new window.
 (define *draw-reuse-device* #f)
 
 (define (draw-reuse-device! #!optional reuse)
@@ -10,6 +13,7 @@
     (set! *draw-reuse-device* #f))
   'ok)
 
+;; Predicates for types of things to draw
 (define (draw:point? expr)
   (and (tagged-list? expr 'point)
        (= (length expr) 3)))
@@ -22,6 +26,7 @@
   (and (tagged-list? expr 'color)
        (= (length expr) 2)))
 
+;; Deal with the graphics device. Assumes you have at least one.
 (define device #f)
 (define (draw:start-graphics!)
   (set! device (make-graphics-device (car (enumerate-graphics-types)))))
@@ -31,7 +36,7 @@
        (graphics-close device))
   (set! device #f))
 
-
+;; Actually draws a UR
 (define (draw ur)
   (if (or (eq? device #f)
           (not *draw-reuse-device*))
@@ -97,6 +102,10 @@
 	(else
 	 (error "Can't query ele from line" ele expr))))
 
+;; Can be improved in the future, but for now is just a way
+;; to slowly draw a line. This screws you over if you have
+;; tons of lines being drawn on the screen, but it's a 
+;; good approximation for now.
 (define (draw:slow-line d expr speed)
   (assert (draw:line? expr))
   (assert d)
@@ -125,6 +134,6 @@
 	  (get-pixels-do (+ n 1)))))
   (vector->list (get-pixels-do 0)))
 
-
+;; Drawing a slow point is roughly meaningless
 (define (draw:slow-point d expr speed)
   (draw:point d expr))
