@@ -11,12 +11,13 @@
 #| Spec
 A UR is a list of commands.
 Each command's car indicates what it is.
-So far only the 'line command type is supported.
+Below is an abbreviated BNF-like description of the UR spec.
 
-UR = (feature*)
-feature = line | color
-line = ('line x1 y1 x2 y2)
-color = color "red|green|blue|..."
+UR      = (feature*)
+feature = line | point | color
+line    = ('line x1 y1 x2 y2)
+point   = ('point x y)
+color   = ('color "red|green|blue|...")
 |#
 
 #| Examples

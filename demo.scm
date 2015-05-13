@@ -1,3 +1,6 @@
+;;; Demos given during presentation.
+;;; See doc/presentation.pdf for the slides
+
 (load "load")
 
 

@@ -111,6 +111,10 @@
 ;;; Logo Language Recognizers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;; Recognizers are predicates which match against
+;;; expressions to determine whether they are of a given type.
+;;; These are used for the generic operator dispatch of eval/apply
+
 (define (logo:name? expr)
   (symbol? expr))
 

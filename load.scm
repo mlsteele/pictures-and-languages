@@ -1,3 +1,5 @@
+;;; Load all the files needed to run our system.
+
 (load "ghelper")
 (load "matcher")
 (load "helpers")

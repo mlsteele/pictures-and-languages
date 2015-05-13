@@ -1,3 +1,4 @@
+;;;; This code taken from 6.945 codebase.
 ;;;; Matcher based on match combinators, CPH/GJS style.
 ;;;     Idea is in Hewitt's PhD thesis (1969).
 

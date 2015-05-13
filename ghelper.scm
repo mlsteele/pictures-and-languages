@@ -1,3 +1,4 @@
+;;;; This code taken from 6.945 codebase.
 ;;;;           Most General Generic-Operator Dispatch
 
 (declare (usual-integrations))

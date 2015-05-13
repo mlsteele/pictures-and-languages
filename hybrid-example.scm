@@ -1,3 +1,5 @@
+;;; Here are some examples of execution for the hybrid language.
+
 (load "scratch")
 (hybrid-reset!)
 (rotate 10)

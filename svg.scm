@@ -1,6 +1,7 @@
 ;;; SVG Render Backend
 ;;;
 ;;; Tools for rendering a Uniform Represention to SVG.
+;;; This is a malnourished module, and serves as our second backend for URs.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SVG Generator

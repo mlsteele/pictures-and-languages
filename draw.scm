@@ -1,5 +1,6 @@
 ;;;; Draw looks at the uniform representation and attempts to draw, using
 ;;;; Scheme's built-in graphics library, from an invariant representation.
+;;;; This is one of the backends we implemented.
 
 ;; Reuse device is for when you leave a graphics window open and want
 ;; to draw something in that window again, instead of closing it and

@@ -1,10 +1,47 @@
 ;;; A graphical description language which is a hybrid of others.
-;;; This language includes our favorite parts from other languages:
-;;; This includes:
+;;;
+;;; This language includes our favorite parts from other languages,
+;;; including:
 ;;; - active transformation that applies to all commands
 ;;; - unwindable temporary transformations
 ;;; - automatic recursion base case detection for self-similar shapes
 ;;; - relative positioning and mirroring
+;;;
+;;; This language runs directly in scheme, its uniform representation
+;;; outputs lives in *ur*.
+;;;
+;;; Drawing primitives:
+;;; (line! x1 y1 x2 y2) ; draw a line affected by the active transformation
+;;; (color! "green")    ; change drawing color
+;;; (hybrid-reset!)     ; clear the UR
+;;; (draw *ur*)         ; send the UR to the X backend
+;;;
+;;; Transforms:
+;;; (save-excursion thunk)
+;;; (translate dx dy [thunk])
+;;; (rotate deg [thunk])
+;;; (scale x [y [thunk]])
+;;; (flip deg [thunk])
+;;;
+;;; All of the transformations take an optional thunk.
+;;; The idea behind this language when it comes to transformations is that
+;;; if a transform is called without a thunk it is a Logo-style transformation
+;;; which applies semi-permanently within the current context.
+;;; Contexts are stacks determined by save-excursion, and idea taken from emacs lisp.
+;;; All the transforms are built upon save-excursion.
+;;; When a transform is called and passed a thunk, that thunk is called wrapped in
+;;; a save-excursion so that any transformations occur only within that context.
+;;;
+;;; Recursion & Repetition:
+;;; (repeat times thunk)
+;;; Repeat causes an action to repeat. This is like Logo. And, as in Logo,
+;;; each repetition is affected by the last. But at the end of the repeat block,
+;;; all transformations are reverted
+;;; (guard thunk)
+;;; Guard is a wart of this language, but it makes possible something cool.
+;;; Just like in CFDG, recursive calls which use guard are safe and will unwind
+;;; when it starts drawing features determined to be too small.
+
 
 ;;; Active uniform representation of drawn stuf
 (define *ur* '())
