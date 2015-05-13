@@ -23,7 +23,7 @@
 (define (m:identity)
   (%matrix:new '((1 0 0) (0 1 0) (0 0 1))))
 
-;;; Matrix multiplication for 3x3
+;;; Matrix multiplication for 3x3... *super legit*
 (define (m:* m1 m2)
   (let ((a (+ (* (matrix:ind 0 m1) (matrix:ind 0 m2))
 	      (* (matrix:ind 1 m1) (matrix:ind 3 m2))

@@ -1,4 +1,4 @@
-;;; Universal Representation
+;;; Uniform Representation
 ;;;
 ;;; Specification of a common format for specifying graphics features.
 ;;; As well as tools for manipulating them.
